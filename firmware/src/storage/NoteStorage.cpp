@@ -46,9 +46,37 @@ void fillMetaDoc(JsonDocument& doc, const NoteMeta& meta) {
 
 namespace NoteStorage {
 
+int migrateLegacyNotes() {
+  std::vector<IndexEntry> entries;
+  if (!loadIndex(entries)) return 0;
+  int fixed = 0;
+  for (const auto& e : entries) {
+    NoteMeta meta;
+    if (!readMeta(e.id, meta)) continue;
+    bool dirty = false;
+    if (!isValidTag(meta.tag)) {
+      meta.tag = "note";
+      dirty = true;
+    }
+    if (!meta.displayId.length()) {
+      meta.displayId = nextDisplayId();
+      dirty = true;
+    }
+    if (dirty) {
+      meta.updatedAt = utcNow();
+      writeMeta(meta);
+      ++fixed;
+    }
+  }
+  if (fixed) Serial.printf("[storage] migrated %d legacy notes\n", fixed);
+  return fixed;
+}
+
 bool begin() {
   prefs.begin("inote", false);
-  return ensureLayout();
+  if (!ensureLayout()) return false;
+  migrateLegacyNotes();
+  return true;
 }
 
 bool ensureLayout() {

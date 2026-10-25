@@ -21,6 +21,13 @@ Portal calendar/tasks, recording markers, date/time formats + `de`, text ask/bri
 - Library-first LAN portal (tag chips, player, delete)
 - Pins reconciled with Waveshare GitHub examples
 
+## v0.4.1 (v1-rc software)
+
+- Real Settings: Sound / Language / Idle / Organize (NVS persist)
+- Notes: BOOT hold → Menu; PWR long → delete
+- Legacy note migration (`displayId` + `tag`); error/empty UX; SD prepare + fixture smoke
+- TLS documented as `setInsecure` for bring-up
+
 ## Still out of scope
 
 - Native phone app / BLE

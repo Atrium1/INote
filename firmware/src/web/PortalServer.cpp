@@ -14,6 +14,7 @@ namespace {
 WebServer server(80);
 const InoteConfig* cfgRef = nullptr;
 bool busy = false;
+bool sdOkFlag = true;
 String briefingHint;
 
 const char* kFallbackHtml = R"HTML(
@@ -89,6 +90,8 @@ void handleHealth() {
   doc["setup"] = WifiSetup::isSetupMode();
   doc["queueBusy"] = JobQueue::isBusy();
   doc["portalBusy"] = busy;
+  doc["sdOk"] = sdOkFlag;
+  doc["hasApiKey"] = cfgRef ? cfgRef->hasApiKey() : false;
   String out;
   serializeJson(doc, out);
   server.send(200, "application/json", out);
@@ -321,6 +324,8 @@ void begin() {
 void loop() { server.handleClient(); }
 
 void setConfig(const InoteConfig* cfg) { cfgRef = cfg; }
+
+void setSdOk(bool ok) { sdOkFlag = ok; }
 
 bool isBusy() { return busy; }
 

@@ -7,7 +7,7 @@ Wake from deep sleep (PWR or BOOT) always lands on **Home** (does not auto-start
 | Context | Gesture | Action |
 |---------|---------|--------|
 | Sleep | PWR or BOOT wake | Boot to **Home** |
-| Home | BOOT short | Start **Record** |
+| Home | BOOT short | Start **Record** (needs SD) |
 | Home | BOOT hold ~1s | Open **Menu** |
 | Home | BOOT hold ~3s | SoftAP setup (`INote-Setup`) |
 | Home | PWR short | Deep sleep (INote face) |
@@ -20,15 +20,23 @@ Wake from deep sleep (PWR or BOOT) always lands on **Home** (does not auto-start
 | Menu | PWR short | Enter item |
 | Menu | BOOT hold ~1s | Back to Home |
 | Notes list | BOOT short | Next note |
-| Notes list | PWR short | Play / pause via speaker |
-| Notes list | BOOT hold ~1s | Delete confirm; PWR short confirms; BOOT short cancels; hold again → Menu |
+| Notes list | PWR short | Play / pause (if Sound ON) |
+| Notes list | BOOT hold ~1s | **Back to Menu** (stop playback) |
+| Notes list | PWR long ~2s | **Delete confirm** |
+| Notes (confirm) | PWR short | Confirm delete |
+| Notes (confirm) | BOOT short | Cancel confirm |
+| Notes (confirm) | BOOT hold ~1s | Cancel → Menu |
 | Tags browse | BOOT short | Next note, then next tag filter |
 | Tags browse | PWR short | Play selected |
 | Tags | BOOT hold ~1s | Back to Menu |
-| Sync | PWR short | Wi-Fi connect / disconnect (portal starts when connected) |
+| Sync | PWR short | Wi-Fi connect / disconnect (portal when connected) |
 | Sync | BOOT hold ~1s | Back to Menu |
-| Settings | BOOT short | Cycle Sound / Transfer / Device |
-| Settings | PWR short | Toggle or stub action |
+| Settings | BOOT short | Cycle Sound / Language / Idle / Organize |
+| Settings | PWR short | Toggle or cycle value; **persist immediately** |
 | Settings | BOOT hold ~1s | Back to Menu |
 
-Idle timeout (`power.idleSleepSeconds`) also deep-sleeps from **Home** when idle.
+**Settings values:** Sound ON/OFF · Language tr/en/de · Idle 30/45/90/OFF · Organize ON/OFF.
+
+Idle timeout (`power.idleSleepSeconds`, 0 = off) also deep-sleeps from **Home** when idle.
+
+Note: Notes delete used to be BOOT hold; v0.4.1 uses **PWR long** so BOOT hold matches other lists (back to Menu).

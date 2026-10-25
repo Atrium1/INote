@@ -34,5 +34,8 @@
     "language": "tr",
     "dateFormat": "DMY",
     "timeFormat": "H24"
+  },
+  "audio": {
+    "soundEnabled": true
   }
 }

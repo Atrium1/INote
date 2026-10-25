@@ -88,6 +88,7 @@ struct IndexEntry {
 namespace NoteStorage {
 bool begin();
 bool ensureLayout();
+int migrateLegacyNotes();  // assign displayId/tag for old notes; returns count fixed
 String newNoteId();
 String utcNow();
 String nextDisplayId();  // "#NNN" from NVS noteSeq

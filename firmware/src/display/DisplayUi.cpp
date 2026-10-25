@@ -19,7 +19,7 @@ bool ready = false;
 uint32_t lastFullMs = 0;
 
 const char* menuLabels[] = {"Notes", "Tags", "Sync", "Settings"};
-const char* settingsLabels[] = {"Sound", "Transfer", "Device"};
+const char* settingsLabels[] = {"Sound", "Language", "Idle", "Organize"};
 
 void drawBattery(int x, int y, int pct) {
   display.drawRect(x, y, 22, 10, GxEPD_BLACK);
@@ -98,9 +98,15 @@ void paint() {
         if (current.confirmDelete) {
           line(120, "Delete?");
           line(145, "PWR yes");
+          line(165, "BOOT cancel");
         } else {
           line(120, current.playing ? "Playing…" : current.listHint);
-          line(160, "PWR play");
+          if (current.screen == UiScreen::Notes) {
+            line(150, "PWR play");
+            line(170, "hold PWR del");
+          } else {
+            line(160, "PWR play");
+          }
         }
         break;
       }
@@ -116,10 +122,11 @@ void paint() {
         } else {
           line(60, "Wi-Fi OFF");
           line(85, "PWR connect");
+          if (current.statusLine.length()) line(110, current.statusLine);
           if (current.pendingCount > 0) {
             char buf[24];
             snprintf(buf, sizeof(buf), "pending %d", current.pendingCount);
-            line(120, buf);
+            line(135, buf);
           }
         }
         break;
@@ -128,12 +135,13 @@ void paint() {
         display.setCursor(8, 28);
         display.print("Settings");
         display.setFont(&FreeMono9pt7b);
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 4; ++i) {
           String row = (i == current.settingsIndex ? "> " : "  ");
           row += settingsLabels[i];
-          line(56 + i * 22, row);
+          line(50 + i * 20, row);
         }
-        line(140, current.listHint.length() ? current.listHint : "PWR toggle");
+        line(145, current.settingsValue.length() ? current.settingsValue : "PWR toggle");
+        line(170, "PWR apply");
         break;
       }
       case UiScreen::Setup: {
@@ -153,18 +161,23 @@ void paint() {
         line(60, buf);
         line(85, current.wifiConnected ? s.wifiOk : s.wifiNo);
         int y = 110;
+        if (current.statusLine.length()) {
+          line(y, current.statusLine);
+          y += 22;
+        }
         if (current.pendingCount > 0) {
           snprintf(buf, sizeof(buf), "pending: %d", current.pendingCount);
           line(y, buf);
           y += 22;
         }
-        if (current.openTasks > 0) {
-          snprintf(buf, sizeof(buf), "%s: %d", s.tasks, current.openTasks);
+        if (current.errorCount > 0) {
+          snprintf(buf, sizeof(buf), "errors: %d", current.errorCount);
           line(y, buf);
           y += 22;
         }
-        if (current.nextDueDisplay.length()) {
-          line(y, current.nextDueDisplay.substring(0, 18));
+        if (current.openTasks > 0 && y < 175) {
+          snprintf(buf, sizeof(buf), "%s: %d", s.tasks, current.openTasks);
+          line(y, buf);
         }
         line(180, "BOOT rec");
         break;
@@ -203,15 +216,16 @@ void render(bool force) {
   const bool changed =
       force || current.screen != lastDrawn.screen || current.noteCount != lastDrawn.noteCount ||
       current.pendingCount != lastDrawn.pendingCount || current.openTasks != lastDrawn.openTasks ||
-      current.markerCount != lastDrawn.markerCount || current.markFlash != lastDrawn.markFlash ||
-      current.nextDueDisplay != lastDrawn.nextDueDisplay ||
-      current.briefingHint != lastDrawn.briefingHint ||
-      current.wifiConnected != lastDrawn.wifiConnected ||
-      current.portalIp != lastDrawn.portalIp || current.tagChoice != lastDrawn.tagChoice ||
-      current.menuIndex != lastDrawn.menuIndex || current.settingsIndex != lastDrawn.settingsIndex ||
-      current.listLine1 != lastDrawn.listLine1 || current.listLine2 != lastDrawn.listLine2 ||
-      current.listHint != lastDrawn.listHint || current.confirmDelete != lastDrawn.confirmDelete ||
-      current.playing != lastDrawn.playing || current.batteryPercent != lastDrawn.batteryPercent ||
+      current.errorCount != lastDrawn.errorCount || current.markerCount != lastDrawn.markerCount ||
+      current.markFlash != lastDrawn.markFlash || current.nextDueDisplay != lastDrawn.nextDueDisplay ||
+      current.briefingHint != lastDrawn.briefingHint || current.statusLine != lastDrawn.statusLine ||
+      current.wifiConnected != lastDrawn.wifiConnected || current.portalIp != lastDrawn.portalIp ||
+      current.tagChoice != lastDrawn.tagChoice || current.menuIndex != lastDrawn.menuIndex ||
+      current.settingsIndex != lastDrawn.settingsIndex ||
+      current.settingsValue != lastDrawn.settingsValue || current.listLine1 != lastDrawn.listLine1 ||
+      current.listLine2 != lastDrawn.listLine2 || current.listHint != lastDrawn.listHint ||
+      current.confirmDelete != lastDrawn.confirmDelete || current.playing != lastDrawn.playing ||
+      current.sdOk != lastDrawn.sdOk || current.batteryPercent != lastDrawn.batteryPercent ||
       (current.screen == UiScreen::Record &&
        (current.recordingMs / 1000) != (lastDrawn.recordingMs / 1000)) ||
       current.errorMessage != lastDrawn.errorMessage;

@@ -380,6 +380,10 @@
     parts.push(d.wifi || (health && health.ip) ? "Wi-Fi bağlı" : "Wi-Fi yok");
     if (typeof d.batteryPercent === "number") parts.push(`Batarya %${d.batteryPercent}`);
     if (d.pendingCount) parts.push(`${d.pendingCount} bekleyen`);
+    const errCount = notes.filter((n) => n.status === "error").length;
+    if (errCount) parts.push(`${errCount} hata`);
+    if (health && health.sdOk === false) parts.push("SD yok");
+    if (health && health.hasApiKey === false) parts.push("API key yok");
     if (fixtureMode) parts.push("fixture");
     statusEl.textContent = parts.join(" · ");
 

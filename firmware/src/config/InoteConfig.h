@@ -31,6 +31,8 @@ struct InoteConfig {
   bool wifiOffWhenIdle = true;
   bool shortPwrSleeps = true;
 
+  bool soundEnabled = true;  // gates on-device WAV playback / PA
+
   bool hasWifi() const { return !wifi.empty() && wifi[0].ssid.length() > 0; }
   bool hasApiKey() const { return openaiApiKey.length() > 8; }
 };

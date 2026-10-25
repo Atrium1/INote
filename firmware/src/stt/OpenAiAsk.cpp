@@ -38,7 +38,7 @@ bool chat(const String& system, const String& user, const String& apiKey, const 
   serializeJson(body, payload);
 
   WiFiClientSecure client;
-  client.setInsecure();
+  client.setInsecure();  // v0.4.x bring-up; pin CA later (see docs)
   HTTPClient https;
   if (!https.begin(client, "https://api.openai.com/v1/chat/completions")) {
     outError = "HTTPS begin failed";

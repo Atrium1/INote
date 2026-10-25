@@ -85,12 +85,17 @@ Firmware: stronger ES8311 ADC+DAC init + I2S duplex; record path + WAV playback.
 | Won’t wake | Wrong wake pins; button stuck; latch already off |
 | Sleep face never drawn | Sleep during recording/queue/setup (blocked) |
 
+## TLS (OpenAI)
+
+Firmware calls `WiFiClientSecure::setInsecure()` for STT / organize / ask. Acceptable for early bring-up on a trusted network; **MITM risk** on hostile Wi-Fi. Certificate pinning is not required for hardware validation; add before wider deployment.
+
 ## API cost control
 
 Set a monthly usage limit in the OpenAI dashboard (e.g. $5–10). Disable `features.autoTranscribe` to queue locally only. Organize adds one small chat call per note when enabled.
 
 ## PC test plan (no board)
 
-1. `cd web && python -m http.server 8080` — library `#NNN` + tag chips; delete in fixture mode; secondary tasks/calendar.  
-2. `python scripts/organize_mock.py --text "Yarın sabah market alışverişi yap"` — expect `type: task` JSON (API organize ≠ manual `tag`).  
-3. `pio run` in `firmware/` — build succeeds.  
+1. `cd web && python -m http.server 8080` — library `#NNN` + tag chips; delete in fixture mode.  
+2. `python scripts/check_fixtures.py` and `python scripts/prepare_sd.py --out ./sd_image`.  
+3. `python scripts/organize_mock.py --text "Yarın sabah market alışverişi yap"` — expect `type: task` JSON (API organize ≠ manual `tag`).  
+4. `pio run` in `firmware/` — build succeeds. See [`docs/test_plan_v1rc.md`](test_plan_v1rc.md).  

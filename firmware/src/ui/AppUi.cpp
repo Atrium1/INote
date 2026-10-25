@@ -42,25 +42,38 @@ uint32_t lastUiMs = 0;
 int menuIndex = 0;
 int settingsIndex = 0;
 int notesIndex = 0;
-int tagsFilterIndex = 0;  // 0=all, then tag cycle
+int tagsFilterIndex = 0;
 int tagsNoteIndex = 0;
 bool confirmDelete = false;
-bool soundStubOn = true;
+String syncHint;
+uint32_t syncHintUntil = 0;
 
 std::vector<IndexEntry> noteList;
 std::vector<NoteMeta> tagNotes;
 
 void syncTime() { configTime(0, 0, "pool.ntp.org", "time.nist.gov"); }
 
+void persistConfig() {
+  if (cfg) InoteConfigStore::save(*cfg);
+}
+
 void ensurePortal() {
   if (portalStarted) return;
   PortalServer::setConfig(cfg);
+  PortalServer::setSdOk(sdReady);
   PortalServer::begin();
   portalStarted = true;
 }
 
 bool tryConnectWifi(bool force) {
-  if (!cfg || !cfg->hasWifi()) return false;
+  if (!cfg) return false;
+  if (!cfg->hasWifi()) {
+    if (force) {
+      syncHint = "No SSID";
+      syncHintUntil = millis() + 4000;
+    }
+    return false;
+  }
   if (WifiSetup::isConnected()) {
     ensurePortal();
     return true;
@@ -68,9 +81,14 @@ bool tryConnectWifi(bool force) {
   if (!force && cfg->wifiOffWhenIdle && !NoteStorage::hasPendingWork(cfg->organize)) return false;
   if (WifiSetup::connectSta(*cfg)) {
     Serial.printf("[wifi] %s\n", WifiSetup::staIp().c_str());
+    syncHint = "";
     syncTime();
     ensurePortal();
     return true;
+  }
+  if (force) {
+    syncHint = "Wi-Fi fail";
+    syncHintUntil = millis() + 4000;
   }
   return false;
 }
@@ -91,6 +109,38 @@ void reloadTagNotes() {
   NoteStorage::listByTag(tag, tagNotes, 64);
   if (tagsNoteIndex >= (int)tagNotes.size()) tagsNoteIndex = 0;
   if (tagsNoteIndex < 0) tagsNoteIndex = 0;
+}
+
+String settingsValueText() {
+  if (!cfg) return "";
+  switch (settingsIndex) {
+    case 0:
+      return cfg->soundEnabled ? "Sound ON" : "Sound OFF";
+    case 1:
+      return String("Lang ") + cfg->uiLanguage;
+    case 2:
+      if (cfg->idleSleepSeconds == 0) return "Idle OFF";
+      return String("Idle ") + String(cfg->idleSleepSeconds) + "s";
+    case 3:
+      return cfg->organize ? "Org ON" : "Org OFF";
+    default:
+      return "";
+  }
+}
+
+void cycleLanguage() {
+  if (cfg->uiLanguage == "tr") cfg->uiLanguage = "en";
+  else if (cfg->uiLanguage == "en") cfg->uiLanguage = "de";
+  else cfg->uiLanguage = "tr";
+  cfg->sttLanguage = cfg->uiLanguage;
+}
+
+void cycleIdleSleep() {
+  const uint32_t cur = cfg->idleSleepSeconds;
+  if (cur == 30) cfg->idleSleepSeconds = 45;
+  else if (cur == 45) cfg->idleSleepSeconds = 90;
+  else if (cur == 90) cfg->idleSleepSeconds = 0;
+  else cfg->idleSleepSeconds = 30;
 }
 
 bool startNote() {
@@ -200,6 +250,13 @@ void enterSleepSequence(bool latchOff) {
   else Power::enterDeepSleep();
 }
 
+String homeStatusLine() {
+  if (!sdReady) return "SD fail";
+  if (!cfg->hasApiKey() && NoteStorage::countByStatus(NoteStatus::Pending) > 0) return "No API key";
+  if (!cfg->hasApiKey()) return "No API key";
+  return "";
+}
+
 void refreshUi(bool force = false) {
   UiModel m;
   m.language = cfg->uiLanguage;
@@ -208,6 +265,7 @@ void refreshUi(bool force = false) {
   m.portalIp = WifiSetup::staIp();
   m.batteryPercent = Power::batteryPercent();
   m.pendingCount = NoteStorage::countByStatus(NoteStatus::Pending);
+  m.errorCount = NoteStorage::countByStatus(NoteStatus::Error);
   m.openTasks = NoteStorage::countOpenTasks();
   m.nextDueAt = NoteStorage::nextUpcomingDueAt();
   m.nextDueDisplay =
@@ -218,9 +276,13 @@ void refreshUi(bool force = false) {
   if (!m.markFlash) markFlash = false;
   m.menuIndex = menuIndex;
   m.settingsIndex = settingsIndex;
+  m.settingsValue = settingsValueText();
   m.tagChoice = pendingTag;
   m.confirmDelete = confirmDelete;
   m.playing = AudioCapture::isPlaying();
+  m.sdOk = sdReady;
+
+  if (syncHint.length() && millis() > syncHintUntil) syncHint = "";
 
   std::vector<IndexEntry> idx;
   if (NoteStorage::loadIndex(idx)) m.noteCount = (int)idx.size();
@@ -245,12 +307,18 @@ void refreshUi(bool force = false) {
         if (noteList.empty()) {
           m.listLine1 = "(empty)";
           m.listLine2 = "";
-          m.listHint = "";
+          m.listHint = "hold BOOT menu";
         } else {
           const auto& e = noteList[notesIndex];
           m.listLine1 = e.displayId.length() ? e.displayId : e.id.substring(0, 12);
           m.listLine2 = e.tag + " · " + noteStatusToString(e.status);
-          m.listHint = "hold BOOT del";
+          if (e.status == NoteStatus::Error) {
+            NoteMeta meta;
+            if (NoteStorage::readMeta(e.id, meta) && meta.error.length()) {
+              m.listLine2 = meta.error.substring(0, 20);
+            }
+          }
+          m.listHint = "hold BOOT menu";
         }
         break;
       }
@@ -266,22 +334,24 @@ void refreshUi(bool force = false) {
           const auto& n = tagNotes[tagsNoteIndex];
           m.listLine1 = n.displayId.length() ? n.displayId : n.id.substring(0, 12);
           m.listLine2 = n.tag;
+          if (n.status == NoteStatus::Error && n.error.length()) {
+            m.listLine2 = n.error.substring(0, 20);
+          }
           m.listHint = "PWR play";
         }
         break;
       }
       case State::Sync:
         m.screen = UiScreen::Sync;
+        m.statusLine = syncHint;
         break;
       case State::Settings:
         m.screen = UiScreen::Settings;
-        m.listHint = settingsIndex == 0 ? (soundStubOn ? "Sound ON" : "Sound OFF")
-                    : settingsIndex == 1 ? "Transfer stub"
-                                         : "Device info";
         break;
       case State::Home:
       default:
         m.screen = UiScreen::Home;
+        m.statusLine = homeStatusLine();
         break;
     }
   }
@@ -291,6 +361,10 @@ void refreshUi(bool force = false) {
 }
 
 void playSelectedNote(const String& id) {
+  if (!cfg->soundEnabled) {
+    refreshUi(true);
+    return;
+  }
   if (AudioCapture::isPlaying()) {
     AudioCapture::stopPlayback();
     refreshUi(true);
@@ -304,6 +378,10 @@ void playSelectedNote(const String& id) {
 
 void handleHome() {
   if (Power::bootShortClick()) {
+    if (!sdReady) {
+      refreshUi(true);
+      return;
+    }
     if (startNote()) refreshUi(true);
   }
   if (Power::bootMarkPress()) {
@@ -358,6 +436,7 @@ void handleMenu() {
       reloadTagNotes();
     } else if (menuIndex == 2) {
       state = State::Sync;
+      syncHint = "";
     } else {
       state = State::Settings;
       settingsIndex = 0;
@@ -400,14 +479,15 @@ void handleNotes() {
   if (Power::pwrShortClick() && !noteList.empty()) {
     playSelectedNote(noteList[notesIndex].id);
   }
+  if (Power::pwrLongPress() && !noteList.empty()) {
+    confirmDelete = true;
+    refreshUi(true);
+  }
   if (Power::bootMarkPress()) {
-    if (!noteList.empty()) {
-      confirmDelete = true;
-      refreshUi(true);
-    } else {
-      state = State::Menu;
-      refreshUi(true);
-    }
+    AudioCapture::stopPlayback();
+    confirmDelete = false;
+    state = State::Menu;
+    refreshUi(true);
   }
 }
 
@@ -436,8 +516,8 @@ void handleSync() {
   if (Power::pwrShortClick()) {
     if (WifiSetup::isConnected()) {
       WifiSetup::disconnectSta();
-      // optional full radio off when idle policy
       if (cfg->wifiOffWhenIdle) WifiSetup::radioOff();
+      syncHint = "";
     } else {
       tryConnectWifi(true);
     }
@@ -451,11 +531,21 @@ void handleSync() {
 
 void handleSettings() {
   if (Power::bootShortClick()) {
-    settingsIndex = (settingsIndex + 1) % 3;
+    settingsIndex = (settingsIndex + 1) % 4;
     refreshUi(true);
   }
   if (Power::pwrShortClick()) {
-    if (settingsIndex == 0) soundStubOn = !soundStubOn;
+    if (settingsIndex == 0) {
+      cfg->soundEnabled = !cfg->soundEnabled;
+      if (!cfg->soundEnabled) AudioCapture::stopPlayback();
+    } else if (settingsIndex == 1) {
+      cycleLanguage();
+    } else if (settingsIndex == 2) {
+      cycleIdleSleep();
+    } else if (settingsIndex == 3) {
+      cfg->organize = !cfg->organize;
+    }
+    persistConfig();
     refreshUi(true);
   }
   if (Power::bootMarkPress()) {
@@ -464,9 +554,7 @@ void handleSettings() {
   }
 }
 
-void handleSetup() {
-  // SoftAP handled in WifiSetup::loop; BOOT long already entered
-}
+void handleSetup() {}
 }  // namespace
 
 namespace AppUi {
@@ -476,6 +564,7 @@ void begin(InoteConfig& c, bool sdOk) {
   sdReady = sdOk;
   state = State::Home;
   JobQueue::begin();
+  PortalServer::setSdOk(sdReady);
   Power::noteActivity();
   if (!cfg->hasWifi()) enterSetup();
   else tryConnectWifi(!cfg->wifiOffWhenIdle || NoteStorage::hasPendingWork(cfg->organize));
@@ -531,14 +620,12 @@ void loop() {
       break;
   }
 
-  // Home: BOOT hold 3s SoftAP (also from handleHome)
   if (state != State::Record && state != State::Setup && Power::bootLongPress()) {
     enterSetup();
     refreshUi(true);
   }
 
   if (!WifiSetup::isSetupMode() && state != State::Sync) {
-    // Background worker only when already connected; Sync owns manual connect
     if (WifiSetup::isConnected()) {
       JobQueue::tick(*cfg, true);
       ensurePortal();

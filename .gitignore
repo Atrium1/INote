@@ -35,4 +35,5 @@ build/
 *.elf
 *.map
 scripts/out/
+sd_image/
 web/fixtures/generated/

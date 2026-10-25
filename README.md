@@ -6,7 +6,7 @@ Hardware pin reference: [waveshareteam/ESP32-S3-ePaper-1.54](https://github.com/
 
 ## Status
 
-v0.4: Home/Record/Tag/Menu UX, `#NNN` + tags, speaker play/delete, Sync Wi-Fi, redesigned portal.
+**v0.4.1** (v1-rc software): real Settings persistence, Notes back/delete gestures, legacy `#NNN`/tag migration, setup script, error/empty messaging. Hardware bring-up still required for product v1.
 
 ## Quick start (no board)
 
@@ -15,44 +15,43 @@ cd web && python -m http.server 8080
 ```
 
 ```bash
-cd scripts
-pip install -r requirements.txt
-python organize_mock.py --text "Yarın market"
-python ask_mock.py --question "Dişçi ne zaman?" --notes ../web/fixtures/notes.json
+python scripts/check_fixtures.py
+python scripts/prepare_sd.py --out ./sd_image
 ```
 
 ```bash
 cd firmware && pio run
 ```
 
+## Prepare SD
+
+1. Format microSD **FAT32**.
+2. `python scripts/prepare_sd.py --out ./sd_image` then copy `sd_image/*` to the card root so `/inote/web/` and `/inote/config.json` exist.
+3. Edit `inote/config.json` (Wi-Fi + `openaiApiKey`) or use SoftAP **INote-Setup**.
+4. On device: Menu → **Sync** → PWR to connect; portal at `http://<device-ip>/`.
+
 ## Config
 
 See [`config.example.json`](config.example.json):
 
-- `features.organize` — API `type` task/appointment (separate from manual **tag**)
-- `features.ask` / `briefing`
+- `audio.soundEnabled` — on-device speaker playback
+- `features.organize` — API `type` (separate from manual **tag**)
 - `ui.language` (`tr`|`en`|`de`), date/time formats
-- `power.idleSleepSeconds`
+- `power.idleSleepSeconds` (`0` = off)
+
+### TLS note
+
+OpenAI HTTPS clients use `WiFiClientSecure::setInsecure()` for v0.4.x bring-up (MITM risk on untrusted networks). Certificate pinning is planned after hardware validation.
 
 ## Gestures
 
-Full map: [`docs/gestures.md`](docs/gestures.md).
-
-| Gesture | Action |
-|---------|--------|
-| BOOT short (Home) | Start recording |
-| BOOT short (Record) | Stop → tag picker |
-| BOOT hold ~1s (Home) | Menu |
-| BOOT hold ~3s | SoftAP setup |
-| PWR short (Home) | Deep sleep |
-| Menu → Sync / PWR | Wi-Fi connect/disconnect |
-
-Copy `web/` to SD `/inote/web/` on the device.
+Full map: [`docs/gestures.md`](docs/gestures.md). Notes: BOOT hold → Menu; **PWR long** → delete confirm.
 
 ## Docs
 
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/bringup.md`](docs/bringup.md)
+- [`docs/test_plan_v1rc.md`](docs/test_plan_v1rc.md)
 - [`hardware/pins.md`](hardware/pins.md)
 
 ## License

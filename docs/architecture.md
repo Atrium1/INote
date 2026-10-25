@@ -43,6 +43,11 @@ Portal: library (#NNN, tag, play, delete) + secondary tasks/calendar/ask
 - **`displayId`**: `#001`… human id (NVS `noteSeq`, also in `meta.json` / index)
 - **`tag`**: manual enum `note|work|idea|buy|private` (primary on-device organize)
 - **`type` / title / dueAt / done**: from optional `features.organize` API — **not** the same as `tag`
+- **Legacy migration:** on `NoteStorage::begin()`, notes missing `displayId` or valid `tag` get `#NNN` + `tag=note` and are rewritten once
+
+## TLS
+
+OpenAI HTTPS uses `setInsecure()` in v0.4.x (bring-up). Prefer trusted LAN; pin CA after hardware validation.
 
 ## meta.json (fields)
 

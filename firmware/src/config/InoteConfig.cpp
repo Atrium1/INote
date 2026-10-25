@@ -63,6 +63,9 @@ void applyJson(InoteConfig& cfg, JsonDocument& doc) {
   if (!doc["power"]["shortPwrSleeps"].isNull()) {
     cfg.shortPwrSleeps = doc["power"]["shortPwrSleeps"].as<bool>();
   }
+  if (!doc["audio"]["soundEnabled"].isNull()) {
+    cfg.soundEnabled = doc["audio"]["soundEnabled"].as<bool>();
+  }
   if (doc["wifi"].is<JsonArray>()) {
     cfg.wifi.clear();
     for (JsonObject o : doc["wifi"].as<JsonArray>()) {
@@ -101,6 +104,7 @@ InoteConfig load() {
   cfg.sleepFace = prefs.getString("sleepFace", cfg.sleepFace);
   cfg.wifiOffWhenIdle = prefs.getBool("wifiOffIdle", true);
   cfg.shortPwrSleeps = prefs.getBool("shortPwrSlp", true);
+  cfg.soundEnabled = prefs.getBool("soundEn", true);
 
   const int n = prefs.getInt("wifiN", 0);
   for (int i = 0; i < n && i < 5; ++i) {
@@ -132,6 +136,7 @@ bool save(const InoteConfig& cfg) {
   prefs.putString("sleepFace", cfg.sleepFace);
   prefs.putBool("wifiOffIdle", cfg.wifiOffWhenIdle);
   prefs.putBool("shortPwrSlp", cfg.shortPwrSleeps);
+  prefs.putBool("soundEn", cfg.soundEnabled);
 
   const int n = min((int)cfg.wifi.size(), 5);
   prefs.putInt("wifiN", n);

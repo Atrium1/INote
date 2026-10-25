@@ -20,11 +20,13 @@ struct UiModel {
   int noteCount = 0;
   int pendingCount = 0;
   int openTasks = 0;
+  int errorCount = 0;
   int markerCount = 0;
   bool markFlash = false;
   String nextDueAt;
   String nextDueDisplay;
   String briefingHint;
+  String statusLine;  // Home / Sync short status
   bool wifiConnected = false;
   String wifiSsid;
   String portalIp;
@@ -32,17 +34,17 @@ struct UiModel {
   uint32_t recordingMs = 0;
   String errorMessage;
   String language = "tr";
-  // Tag picker
   String tagChoice = "note";
-  // Menu / lists
-  int menuIndex = 0;       // 0 Notes 1 Tags 2 Sync 3 Settings
-  int settingsIndex = 0;   // 0 Sound 1 Transfer 2 Device
+  int menuIndex = 0;      // 0 Notes 1 Tags 2 Sync 3 Settings
+  int settingsIndex = 0;  // 0 Sound 1 Language 2 Idle 3 Organize
+  String settingsValue;   // live value for current settings row
   String listTitle;
   String listLine1;
   String listLine2;
   String listHint;
   bool confirmDelete = false;
   bool playing = false;
+  bool sdOk = true;
 };
 
 namespace DisplayUi {
