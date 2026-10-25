@@ -101,6 +101,12 @@ bool connectSta(const InoteConfig& cfg) {
 
 bool isConnected() { return WiFi.status() == WL_CONNECTED; }
 
+void disconnectSta() {
+  if (setupMode) return;
+  WiFi.disconnect(true, false);
+  delay(50);
+}
+
 void radioOff() {
   if (setupMode) stopSetupPortal();
   WiFi.disconnect(true, true);
@@ -117,6 +123,11 @@ void loop() {
 String staIp() {
   if (!isConnected()) return "";
   return WiFi.localIP().toString();
+}
+
+String staSsid() {
+  if (!isConnected()) return "";
+  return WiFi.SSID();
 }
 
 }  // namespace WifiSetup

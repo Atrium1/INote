@@ -5,13 +5,14 @@
   const emptyEl = document.getElementById("empty");
   const searchEl = document.getElementById("search");
   const statusEl = document.getElementById("deviceStatus");
-  const detail = document.getElementById("detail");
+  const player = document.getElementById("player");
   const doneRow = document.getElementById("doneRow");
   const doneCb = document.getElementById("detailDone");
   const markerList = document.getElementById("markerList");
 
   let notes = [];
   let typeFilter = "all";
+  let tagFilter = "";
   let taskFilter = "open";
   let query = "";
   let fixtureMode = false;
@@ -38,6 +39,10 @@
       .replaceAll('"', "&quot;");
   }
 
+  function displayLabel(n) {
+    return n.displayId || n.id;
+  }
+
   function previewText(n) {
     if (n.title) return n.title;
     if (n.transcript) return n.transcript;
@@ -49,7 +54,9 @@
   function noteMatchesQuery(n) {
     const q = query.trim().toLocaleLowerCase("tr");
     if (!q) return true;
-    const hay = `${n.transcript || ""} ${n.title || ""} ${n.id} ${n.error || ""}`.toLocaleLowerCase("tr");
+    const hay = `${n.transcript || ""} ${n.title || ""} ${n.id} ${n.displayId || ""} ${n.tag || ""} ${n.error || ""}`.toLocaleLowerCase(
+      "tr"
+    );
     return hay.includes(q);
   }
 
@@ -57,9 +64,8 @@
     return notes.filter((n) => {
       if (typeFilter === "pending" || typeFilter === "error") {
         if (n.status !== typeFilter) return false;
-      } else if (typeFilter !== "all") {
-        if ((n.type || "") !== typeFilter) return false;
       }
+      if (tagFilter && (n.tag || "note") !== tagFilter) return false;
       return noteMatchesQuery(n);
     });
   }
@@ -81,21 +87,25 @@
       });
   }
 
+  function fmtDuration(ms) {
+    const s = Math.round((ms || 0) / 1000);
+    if (s < 60) return `${s} sn`;
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+
   function renderNoteButton(n, list) {
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "note";
-    const typeBit = n.type ? ` · ${typeLabel[n.type] || n.type}` : "";
-    const dueBit = n.dueAt ? ` · ${F.formatWhen(n.dueAt)}` : "";
-    const doneBit = n.type === "task" && n.done ? " ✓" : "";
+    const tag = n.tag || "note";
     btn.innerHTML = `
       <div class="note-head">
-        <span>${F.formatWhen(n.createdAt)}${typeBit}${dueBit}${doneBit}</span>
+        <span><span class="note-id">${escapeHtml(displayLabel(n))}</span><span class="note-tag">${escapeHtml(tag)}</span> · ${fmtDuration(n.durationMs)}</span>
         <span class="status ${n.status}">${statusLabel[n.status] || n.status}</span>
       </div>
       <p class="preview">${escapeHtml(previewText(n))}</p>`;
-    btn.addEventListener("click", () => openDetail(n));
+    btn.addEventListener("click", () => openPlayer(n));
     li.appendChild(btn);
     list.appendChild(li);
   }
@@ -104,7 +114,10 @@
     const items = filteredNotes();
     listEl.innerHTML = "";
     emptyEl.classList.toggle("hidden", items.length > 0);
-    items.forEach((n) => renderNoteButton(n, listEl));
+    items.forEach((n, i) => {
+      renderNoteButton(n, listEl);
+      listEl.lastElementChild.querySelector(".note").style.animationDelay = `${Math.min(i, 12) * 30}ms`;
+    });
   }
 
   function renderTasks() {
@@ -144,7 +157,7 @@
       grid.appendChild(h);
     });
     const first = new Date(y, m, 1);
-    let start = (first.getDay() + 6) % 7; // Monday=0
+    let start = (first.getDay() + 6) % 7;
     const dim = new Date(y, m + 1, 0).getDate();
     const dotted = daysWithItems(y, m);
     for (let i = 0; i < start; i++) {
@@ -171,7 +184,6 @@
 
   function showTab(name) {
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
-    document.getElementById("panelNotes").classList.toggle("hidden", name !== "notes");
     document.getElementById("panelTasks").classList.toggle("hidden", name !== "tasks");
     document.getElementById("panelCalendar").classList.toggle("hidden", name !== "calendar");
     document.getElementById("panelAsk").classList.toggle("hidden", name !== "ask");
@@ -179,15 +191,21 @@
     if (name === "calendar") renderCalendar();
   }
 
-  function openDetail(n) {
+  function openPlayer(n) {
     activeNote = n;
-    document.getElementById("detailTitle").textContent = n.title || n.id;
-    const bits = [F.formatWhen(n.createdAt), `${Math.round((n.durationMs || 0) / 1000)} sn`, statusLabel[n.status] || n.status];
+    player.hidden = false;
+    document.getElementById("playerId").textContent = displayLabel(n);
+    document.getElementById("playerTag").textContent = n.tag || "note";
+    const bits = [
+      F.formatWhen(n.createdAt),
+      fmtDuration(n.durationMs),
+      statusLabel[n.status] || n.status,
+    ];
     if (n.type) bits.push(typeLabel[n.type] || n.type);
     if (n.dueAt) bits.push(`son: ${F.formatWhen(n.dueAt)}`);
-    document.getElementById("detailMeta").textContent = bits.join(" · ");
-    document.getElementById("detailTranscript").textContent = n.transcript || "—";
-    const err = document.getElementById("detailError");
+    document.getElementById("playerMeta").textContent = bits.join(" · ");
+    document.getElementById("playerTranscript").textContent = n.transcript || "—";
+    const err = document.getElementById("playerError");
     const errText = [n.error, n.organizeError].filter(Boolean).join(" · ");
     err.textContent = errText;
     err.classList.toggle("hidden", !errText);
@@ -204,26 +222,53 @@
       b.textContent = `${(m.tMs / 1000).toFixed(1)}s` + (m.label ? ` — ${m.label}` : "");
       b.addEventListener("click", (ev) => {
         ev.preventDefault();
-        if (!audio.classList.contains("hidden")) {
-          audio.currentTime = (m.tMs || 0) / 1000;
-          audio.play().catch(() => {});
-        }
+        audio.currentTime = (m.tMs || 0) / 1000;
+        audio.play().catch(() => {});
       });
       li.appendChild(b);
       markerList.appendChild(li);
     });
 
-    const dl = document.getElementById("detailDownload");
     const audioUrl = n._audioUrl || `/api/notes/${encodeURIComponent(n.id)}/audio`;
     audio.removeAttribute("src");
-    dl.href = audioUrl;
-    dl.download = `${n.id}.wav`;
-    if (n._hasAudio === false) audio.classList.add("hidden");
-    else {
+    if (n._hasAudio === false) {
+      audio.classList.add("hidden");
+    } else {
       audio.classList.remove("hidden");
       audio.src = audioUrl;
     }
-    detail.showModal();
+    player.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function closePlayer() {
+    const audio = document.getElementById("detailAudio");
+    audio.pause();
+    player.hidden = true;
+    activeNote = null;
+  }
+
+  async function deleteActive() {
+    if (!activeNote) return;
+    if (!confirm(`${displayLabel(activeNote)} silinsin mi?`)) return;
+    if (fixtureMode) {
+      notes = notes.filter((n) => n.id !== activeNote.id);
+      closePlayer();
+      renderNotes();
+      renderTasks();
+      return;
+    }
+    try {
+      const res = await fetch(`/api/notes/${encodeURIComponent(activeNote.id)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      notes = notes.filter((n) => n.id !== activeNote.id);
+      closePlayer();
+      renderNotes();
+      renderTasks();
+    } catch (e) {
+      alert(`Silinemedi: ${e.message}`);
+    }
   }
 
   async function setDone(done) {
@@ -297,11 +342,22 @@
       /* fixture defaults */
     }
     F.setConfig({ language: "tr", dateFormat: "DMY", timeFormat: "H24" });
-    features = { ask: true, briefing: true }; // show UI in fixture demo
+    features = { ask: true, briefing: true };
+  }
+
+  async function loadHealth() {
+    try {
+      const res = await fetch("/api/health", { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
   }
 
   async function load() {
     await loadConfig();
+    const health = await loadHealth();
     let data = null;
     fixtureMode = false;
     try {
@@ -319,10 +375,11 @@
     notes = data.notes || [];
     const d = data.device || {};
     const parts = [];
-    if (d.name) parts.push(d.name);
-    parts.push(d.wifi ? "Wi-Fi bağlı" : "Wi-Fi yok");
+    parts.push(d.name || "INote");
+    if (health && health.ip) parts.push(health.ip);
+    parts.push(d.wifi || (health && health.ip) ? "Wi-Fi bağlı" : "Wi-Fi yok");
     if (typeof d.batteryPercent === "number") parts.push(`Batarya %${d.batteryPercent}`);
-    if (d.openTasks) parts.push(`${d.openTasks} açık görev`);
+    if (d.pendingCount) parts.push(`${d.pendingCount} bekleyen`);
     if (fixtureMode) parts.push("fixture");
     statusEl.textContent = parts.join(" · ");
 
@@ -344,11 +401,22 @@
   });
 
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab)));
+
   document.querySelectorAll("[data-filter]").forEach((chip) => {
     chip.addEventListener("click", () => {
-      document.querySelectorAll("[data-filter]").forEach((c) => c.classList.remove("active"));
+      document.querySelectorAll("[data-filter], [data-filter-tag]").forEach((c) => c.classList.remove("active"));
       chip.classList.add("active");
       typeFilter = chip.dataset.filter;
+      tagFilter = "";
+      renderNotes();
+    });
+  });
+  document.querySelectorAll("[data-filter-tag]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("[data-filter], [data-filter-tag]").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      tagFilter = chip.dataset.filterTag;
+      typeFilter = "all";
       renderNotes();
     });
   });
@@ -372,6 +440,8 @@
   document.getElementById("askBtn").addEventListener("click", () => runAsk().catch((e) => alert(e.message)));
   document.getElementById("briefDay").addEventListener("click", () => runBrief("day").catch((e) => alert(e.message)));
   document.getElementById("briefWeek").addEventListener("click", () => runBrief("week").catch((e) => alert(e.message)));
+  document.getElementById("playerClose").addEventListener("click", closePlayer);
+  document.getElementById("deleteBtn").addEventListener("click", () => deleteActive());
 
   load().catch((err) => {
     statusEl.textContent = `Yüklenemedi: ${err.message}`;

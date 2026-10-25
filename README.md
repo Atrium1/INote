@@ -1,10 +1,12 @@
 # INote
 
-Offline-first pocket voice notes for **Waveshare ESP32-S3-ePaper-1.54 V2**. Transcribe and optionally organize on Wi-Fi; portal with tasks/calendar; text ask/briefings; idle e-ink sleep.
+Offline-first pocket voice notes for **Waveshare ESP32-S3-ePaper-1.54 V2**. Record on device, tag manually, sync over Wi-Fi; LAN library portal with playback and delete.
+
+Hardware pin reference: [waveshareteam/ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-ePaper-1.54).
 
 ## Status
 
-v0.3: calendar + tasks UI, recording markers, date/time formats + `de`, text ask/briefing APIs (TTS later).
+v0.4: Home/Record/Tag/Menu UX, `#NNN` + tags, speaker play/delete, Sync Wi-Fi, redesigned portal.
 
 ## Quick start (no board)
 
@@ -17,7 +19,6 @@ cd scripts
 pip install -r requirements.txt
 python organize_mock.py --text "Yarın market"
 python ask_mock.py --question "Dişçi ne zaman?" --notes ../web/fixtures/notes.json
-python briefing_mock.py --range day --notes ../web/fixtures/notes.json
 ```
 
 ```bash
@@ -28,21 +29,31 @@ cd firmware && pio run
 
 See [`config.example.json`](config.example.json):
 
-- `features.organize` / `ask` / `briefing`
-- `ui.language` (`tr`|`en`|`de`), `dateFormat` (`DMY`|`YMD`|`MDY`), `timeFormat` (`H24`|`H12`)
+- `features.organize` — API `type` task/appointment (separate from manual **tag**)
+- `features.ask` / `briefing`
+- `ui.language` (`tr`|`en`|`de`), date/time formats
 - `power.idleSleepSeconds`
 
 ## Gestures
 
+Full map: [`docs/gestures.md`](docs/gestures.md).
+
 | Gesture | Action |
 |---------|--------|
-| BOOT short | Start/stop recording |
-| BOOT hold ~1s (recording) | Add marker |
-| BOOT hold ~3s (idle) | Wi-Fi setup AP |
-| PWR short | Deep sleep |
-| PWR long | Soft power off (latch) |
+| BOOT short (Home) | Start recording |
+| BOOT short (Record) | Stop → tag picker |
+| BOOT hold ~1s (Home) | Menu |
+| BOOT hold ~3s | SoftAP setup |
+| PWR short (Home) | Deep sleep |
+| Menu → Sync / PWR | Wi-Fi connect/disconnect |
 
 Copy `web/` to SD `/inote/web/` on the device.
+
+## Docs
+
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/bringup.md`](docs/bringup.md)
+- [`hardware/pins.md`](hardware/pins.md)
 
 ## License
 

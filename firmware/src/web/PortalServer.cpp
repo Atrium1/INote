@@ -38,6 +38,9 @@ String readPostBody() {
 
 void fillMetaObject(JsonObject o, const NoteMeta& meta) {
   o["id"] = meta.id;
+  if (meta.displayId.length()) o["displayId"] = meta.displayId;
+  else o["displayId"] = nullptr;
+  o["tag"] = meta.tag.length() ? meta.tag : "note";
   o["createdAt"] = meta.createdAt;
   o["updatedAt"] = meta.updatedAt;
   o["audioPath"] = meta.audioPath;
@@ -156,6 +159,20 @@ void handleNoteDone(const String& id) {
   server.send(200, "application/json", out);
 }
 
+void handleNoteDelete(const String& id) {
+  Power::noteActivity();
+  NoteMeta meta;
+  if (!NoteStorage::readMeta(id, meta)) {
+    server.send(404, "text/plain", "not found");
+    return;
+  }
+  if (!NoteStorage::deleteNote(id)) {
+    server.send(500, "text/plain", "delete failed");
+    return;
+  }
+  server.send(200, "application/json", "{\"ok\":true}");
+}
+
 void handleAsk() {
   Power::noteActivity();
   if (!cfgRef || !cfgRef->ask) {
@@ -253,6 +270,16 @@ void handleNote() {
   }
   if (tail == "done" && server.method() == HTTP_POST) {
     handleNoteDone(id);
+    return;
+  }
+
+  if (tail.length() == 0 && server.method() == HTTP_DELETE) {
+    handleNoteDelete(id);
+    return;
+  }
+
+  if (server.method() != HTTP_GET) {
+    server.send(405, "text/plain", "method");
     return;
   }
 

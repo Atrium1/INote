@@ -23,6 +23,7 @@
     "ask": false,
     "briefing": false
   },
+  "_comment_tag_vs_organize": "Manual on-device tag is note|work|idea|buy|private (meta.tag / displayId #NNN). features.organize adds API type task|appointment|note — separate fields.",
   "power": {
     "idleSleepSeconds": 45,
     "sleepFace": "INote",

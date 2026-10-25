@@ -8,14 +8,21 @@ Capture, STT queue, SoftAP, LAN list/search/playback, TR/EN strings.
 
 Organize (optional), portal type filters + task done, idle deep sleep with sticky INote face.
 
-## v0.3 (this pass)
+## v0.3
 
-- Portal: Notes / Tasks / Calendar tabs; ask + briefing UI  
-- Recording markers: long-hold BOOT ~1s while recording  
-- `ui.dateFormat` / `ui.timeFormat` + `de` language  
-- Text `POST /api/ask` and `POST /api/briefing` (TTS later wraps `text`)  
+Portal calendar/tasks, recording markers, date/time formats + `de`, text ask/briefing.
+
+## v0.4 (device UX + portal)
+
+- On-device Home / Record / Tag / Menu (Notes, Tags, Sync, Settings)
+- Manual tags `note|work|idea|buy|private` and `#NNN` display ids
+- ES8311 speaker playback + delete on device and `DELETE /api/notes/:id`
+- Sync screen Wi-Fi connect/disconnect; portal when connected
+- Library-first LAN portal (tag chips, player, delete)
+- Pins reconciled with Waveshare GitHub examples
 
 ## Still out of scope
 
-- TTS / speaker playback  
-- Cloud sync / BLE  
+- Native phone app / BLE
+- Cloud sync
+- Perfect audio EQ / TTS voice-out (roadmap)

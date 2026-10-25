@@ -18,6 +18,9 @@ UiModel lastDrawn;
 bool ready = false;
 uint32_t lastFullMs = 0;
 
+const char* menuLabels[] = {"Notes", "Tags", "Sync", "Settings"};
+const char* settingsLabels[] = {"Sound", "Transfer", "Device"};
+
 void drawBattery(int x, int y, int pct) {
   display.drawRect(x, y, 22, 10, GxEPD_BLACK);
   display.fillRect(x + 22, y + 3, 2, 4, GxEPD_BLACK);
@@ -25,6 +28,17 @@ void drawBattery(int x, int y, int pct) {
     int w = constrain(pct, 0, 100) * 18 / 100;
     display.fillRect(x + 2, y + 2, w, 6, GxEPD_BLACK);
   }
+}
+
+void drawStatusChrome() {
+  if (current.batteryPercent >= 0) drawBattery(170, 8, current.batteryPercent);
+  display.drawCircle(160, 12, 3, GxEPD_BLACK);
+  if (current.wifiConnected) display.drawCircle(160, 12, 6, GxEPD_BLACK);
+}
+
+void line(int y, const String& t) {
+  display.setCursor(8, y);
+  display.print(t.substring(0, 22));
 }
 
 void paint() {
@@ -37,71 +51,127 @@ void paint() {
     display.setTextColor(GxEPD_BLACK);
     display.setFont(&FreeMonoBold9pt7b);
 
-    if (current.screen == UiScreen::Recording) {
-      display.setCursor(8, 28);
-      display.print(s.recording);
-      display.setFont(&FreeMono9pt7b);
-      display.setCursor(8, 60);
-      char buf[16];
-      snprintf(buf, sizeof(buf), "%lu s", (unsigned long)(current.recordingMs / 1000));
-      display.print(buf);
-      display.setCursor(8, 90);
-      display.printf("marks: %d", current.markerCount);
-      if (current.markFlash) {
-        display.setCursor(8, 120);
-        display.print(s.mark);
+    switch (current.screen) {
+      case UiScreen::Record: {
+        display.setCursor(8, 28);
+        display.print(s.recording);
+        display.setFont(&FreeMono9pt7b);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%lu s", (unsigned long)(current.recordingMs / 1000));
+        line(60, buf);
+        snprintf(buf, sizeof(buf), "marks: %d", current.markerCount);
+        line(90, buf);
+        if (current.markFlash) line(120, s.mark);
+        line(180, "BOOT stop");
+        break;
       }
-    } else if (current.screen == UiScreen::Syncing) {
-      display.setCursor(8, 28);
-      display.print(s.syncing);
-      display.setFont(&FreeMono9pt7b);
-      display.setCursor(8, 60);
-      display.printf("%d pending", current.pendingCount);
-    } else if (current.screen == UiScreen::Error) {
-      display.setCursor(8, 28);
-      display.print(s.error);
-      display.setFont(&FreeMono9pt7b);
-      display.setCursor(8, 56);
-      display.print(current.errorMessage.substring(0, 40));
-    } else if (current.screen == UiScreen::Setup) {
-      display.setCursor(8, 28);
-      display.print(s.setupAp);
-      display.setFont(&FreeMono9pt7b);
-      display.setCursor(8, 60);
-      display.print("INote-Setup");
-    } else {
-      display.setCursor(8, 28);
-      display.print(s.idle);
-      display.setFont(&FreeMono9pt7b);
-      display.setCursor(8, 60);
-      display.printf("%d %s", current.noteCount, s.notes);
-      display.setCursor(8, 90);
-      display.print(current.wifiConnected ? s.wifiOk : s.wifiNo);
-      int y = 120;
-      if (current.pendingCount > 0) {
-        display.setCursor(8, y);
-        display.printf("pending: %d", current.pendingCount);
-        y += 22;
+      case UiScreen::Tag: {
+        display.setCursor(8, 28);
+        display.print("Tag");
+        display.setFont(&FreeMonoBold18pt7b);
+        display.setCursor(8, 90);
+        display.print(current.tagChoice);
+        display.setFont(&FreeMono9pt7b);
+        line(140, "BOOT cycle");
+        line(165, "PWR confirm");
+        break;
       }
-      if (current.openTasks > 0) {
-        display.setCursor(8, y);
-        display.printf("%s: %d", s.tasks, current.openTasks);
-        y += 22;
+      case UiScreen::Menu: {
+        display.setCursor(8, 28);
+        display.print("Menu");
+        display.setFont(&FreeMono9pt7b);
+        for (int i = 0; i < 4; ++i) {
+          String row = (i == current.menuIndex ? "> " : "  ");
+          row += menuLabels[i];
+          line(56 + i * 22, row);
+        }
+        line(175, "PWR enter");
+        break;
       }
-      if (current.nextDueDisplay.length()) {
-        display.setCursor(8, y);
-        display.print(current.nextDueDisplay.substring(0, 18));
-        y += 22;
+      case UiScreen::Notes:
+      case UiScreen::Tags: {
+        display.setCursor(8, 28);
+        display.print(current.listTitle.length() ? current.listTitle : "Notes");
+        display.setFont(&FreeMono9pt7b);
+        line(56, current.listLine1);
+        line(80, current.listLine2);
+        if (current.confirmDelete) {
+          line(120, "Delete?");
+          line(145, "PWR yes");
+        } else {
+          line(120, current.playing ? "Playing…" : current.listHint);
+          line(160, "PWR play");
+        }
+        break;
       }
-      if (current.briefingHint.length()) {
-        display.setCursor(8, y);
-        display.print(current.briefingHint.substring(0, 18));
+      case UiScreen::Sync: {
+        display.setCursor(8, 28);
+        display.print("Sync");
+        display.setFont(&FreeMono9pt7b);
+        if (current.wifiConnected) {
+          line(60, "Wi-Fi ON");
+          line(85, current.wifiSsid.substring(0, 18));
+          line(110, current.portalIp);
+          line(145, "PWR disconnect");
+        } else {
+          line(60, "Wi-Fi OFF");
+          line(85, "PWR connect");
+          if (current.pendingCount > 0) {
+            char buf[24];
+            snprintf(buf, sizeof(buf), "pending %d", current.pendingCount);
+            line(120, buf);
+          }
+        }
+        break;
+      }
+      case UiScreen::Settings: {
+        display.setCursor(8, 28);
+        display.print("Settings");
+        display.setFont(&FreeMono9pt7b);
+        for (int i = 0; i < 3; ++i) {
+          String row = (i == current.settingsIndex ? "> " : "  ");
+          row += settingsLabels[i];
+          line(56 + i * 22, row);
+        }
+        line(140, current.listHint.length() ? current.listHint : "PWR toggle");
+        break;
+      }
+      case UiScreen::Setup: {
+        display.setCursor(8, 28);
+        display.print(s.setupAp);
+        display.setFont(&FreeMono9pt7b);
+        line(60, "INote-Setup");
+        break;
+      }
+      case UiScreen::Home:
+      default: {
+        display.setCursor(8, 28);
+        display.print(s.idle);
+        display.setFont(&FreeMono9pt7b);
+        char buf[24];
+        snprintf(buf, sizeof(buf), "%d %s", current.noteCount, s.notes);
+        line(60, buf);
+        line(85, current.wifiConnected ? s.wifiOk : s.wifiNo);
+        int y = 110;
+        if (current.pendingCount > 0) {
+          snprintf(buf, sizeof(buf), "pending: %d", current.pendingCount);
+          line(y, buf);
+          y += 22;
+        }
+        if (current.openTasks > 0) {
+          snprintf(buf, sizeof(buf), "%s: %d", s.tasks, current.openTasks);
+          line(y, buf);
+          y += 22;
+        }
+        if (current.nextDueDisplay.length()) {
+          line(y, current.nextDueDisplay.substring(0, 18));
+        }
+        line(180, "BOOT rec");
+        break;
       }
     }
 
-    if (current.batteryPercent >= 0) drawBattery(170, 8, current.batteryPercent);
-    display.drawCircle(160, 12, 3, GxEPD_BLACK);
-    if (current.wifiConnected) display.drawCircle(160, 12, 6, GxEPD_BLACK);
+    drawStatusChrome();
   } while (display.nextPage());
   lastDrawn = current;
   lastFullMs = millis();
@@ -137,13 +207,17 @@ void render(bool force) {
       current.nextDueDisplay != lastDrawn.nextDueDisplay ||
       current.briefingHint != lastDrawn.briefingHint ||
       current.wifiConnected != lastDrawn.wifiConnected ||
-      current.batteryPercent != lastDrawn.batteryPercent ||
-      (current.screen == UiScreen::Recording &&
+      current.portalIp != lastDrawn.portalIp || current.tagChoice != lastDrawn.tagChoice ||
+      current.menuIndex != lastDrawn.menuIndex || current.settingsIndex != lastDrawn.settingsIndex ||
+      current.listLine1 != lastDrawn.listLine1 || current.listLine2 != lastDrawn.listLine2 ||
+      current.listHint != lastDrawn.listHint || current.confirmDelete != lastDrawn.confirmDelete ||
+      current.playing != lastDrawn.playing || current.batteryPercent != lastDrawn.batteryPercent ||
+      (current.screen == UiScreen::Record &&
        (current.recordingMs / 1000) != (lastDrawn.recordingMs / 1000)) ||
       current.errorMessage != lastDrawn.errorMessage;
 
   if (!changed) return;
-  if (!force && millis() - lastFullMs < 800 && current.screen != UiScreen::Recording) return;
+  if (!force && millis() - lastFullMs < 800 && current.screen != UiScreen::Record) return;
   paint();
 }
 

@@ -8,18 +8,19 @@ Capture, SD, SoftAP, STT, LAN portal, e-paper status.
 
 Classification, task fields, idle deep sleep.
 
-## v0.3 — Calendar, markers, ask/briefing (current)
+## v0.3 — Calendar, markers, ask/briefing
 
-- Web calendar + task views  
-- Recording markers  
-- Date/time formats + de  
-- Text Q&A and day/week briefings  
+Web calendar + tasks, markers, date/time formats, text Q&A/briefings.
 
-## v0.4 — Voice out
+## v0.4 — Device UX + portal (current)
 
-- TTS + ES8311 speaker using ask/briefing `text` payloads  
-- Hold-to-ask spoken answers  
+Home/Record/Tag/Menu, manual tags + `#NNN`, speaker play/delete, Sync Wi-Fi, library portal. Hardware: Waveshare ES8311 play path.
+
+## v0.5 — Voice out
+
+- TTS wrapping ask/briefing `text`
+- Hold-to-ask spoken answers
 
 ## Later
 
-Case STL, deeper power profiling, more locales.  
+Case STL, SDMMC mount if SPI CS fails on bring-up, deeper power profiling, more locales.

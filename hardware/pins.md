@@ -1,21 +1,27 @@
 # Pin map — ESP32-S3-ePaper-1.54 (B/W)
 
-Source of truth: Waveshare docs / vendor `user_config.h`. **Verify on bring-up.** Do not use the 1.54G colour board pin table blindly if anything conflicts with the B/W repo.
+Source of truth: [waveshareteam/ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-ePaper-1.54)
+
+- `02_Example/Arduino/*/user_config.h` — EPD, I2C, power, buttons
+- `02_Example/Arduino/08_Audio_Test/src/codec_board/board_cfg.h` — `S3_ePaper_1_54` I2S / ES8311 / PA
+- `02_Example/Arduino/04_SD_Card/sdcard_bsp.cpp` — SDMMC 1-bit
+
+**Verify on bring-up.** Do not use conflicting DeepWiki / colour-board tables for SD CS vs I2S SCLK.
 
 ## E-paper (SPI)
 
 | Signal | GPIO | Notes |
 |--------|------|--------|
-| EPD_PWR | 6 | **Active LOW** — drive LOW to power panel |
+| EPD_PWR | 6 | **Active LOW** |
 | BUSY | 8 | |
 | RST | 9 | |
 | DC | 10 | |
 | CS | 11 | |
 | SCK | 12 | |
 | MOSI | 13 | |
-| Panel | — | 200×200 B/W (SSD1681 / GDEY0154D67 class via GxEPD2) |
+| Panel | — | 200×200 B/W (GxEPD2 `GxEPD2_154_D67`) |
 
-## I2C (shared)
+## I2C
 
 | Signal | GPIO | Devices |
 |--------|------|---------|
@@ -27,38 +33,30 @@ Source of truth: Waveshare docs / vendor `user_config.h`. **Verify on bring-up.*
 | Signal | GPIO | Notes |
 |--------|------|--------|
 | MCLK | 14 | |
-| SCLK | 15 | |
-| ASDOUT | 16 | Mic data in |
-| LRCK | 38 | |
-| DSDIN | 45 | DAC out (unused in v0.1) |
-| PA_EN | 42 | Keep off / inactive in v0.1 |
-| PA_CTRL | 46 | Keep off in v0.1 |
+| SCLK / BCLK | 15 | |
+| ASDOUT / DIN | 16 | Mic |
+| LRCK / WS | 38 | |
+| DSDIN / DOUT | 45 | DAC → speaker |
+| Audio_PWR / PA_EN | 42 | Codec / amp rail (`user_config` Audio_PWR_PIN) |
+| PA | 46 | Amp enable (`board_cfg` `pa: 46`) |
 
 ## microSD
 
-| Signal | GPIO | Notes |
-|--------|------|--------|
-| CLK | 39 | |
-| MISO | 40 | |
-| MOSI | 41 | |
-| CS | 21 | Used in firmware `board_pins.h`; confirm against Waveshare schematic on bring-up |
+Waveshare demo uses **SDMMC 1-bit** (no CS):
+
+| Signal | GPIO |
+|--------|------|
+| CLK | 39 |
+| CMD | 41 |
+| D0 | 40 |
+
+Firmware currently mounts via **Arduino SD SPI** on the same CLK/MOSI/MISO with `CS=21` (SPI host select; not in the Waveshare SDMMC example). Confirm on bring-up; migrate to SDMMC if SPI fails.
 
 ## Power / buttons
 
 | Signal | GPIO | Notes |
 |--------|------|--------|
-| BOOT | 0 | Capture gestures; hold for download mode |
-| PWR / BAT_KEY | 18 | Sleep / power button |
-| BAT_Control | 17 | Hold HIGH to stay on under battery |
-| BAT_ADC | 4 | Voltage divider; Vbat ≈ Vad × 2 |
-
-## USB
-
-| Signal | GPIO |
-|--------|------|
-| USB_N | 19 |
-| USB_P | 20 |
-
-## Expansion header
-
-GPIO1, GPIO2, GPIO3 plus power / I2C / UART — unused in v0.1.
+| BOOT | 0 | Gestures; download mode |
+| PWR | 18 | Sleep / power |
+| VBAT / latch | 17 | Hold HIGH on battery |
+| BAT_ADC | 4 | Vbat ≈ Vad × 2 |

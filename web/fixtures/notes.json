@@ -10,6 +10,8 @@
   "notes": [
     {
       "id": "20260326T090000Z-a1",
+      "displayId": "#001",
+      "tag": "work",
       "createdAt": "2026-03-26T09:00:00Z",
       "updatedAt": "2026-03-26T09:00:40Z",
       "transcript": "Yarın sabah dişçi randevusunu hatırlat. Saat on buçukta.",
@@ -26,6 +28,8 @@
     },
     {
       "id": "20260326T110000Z-b2",
+      "displayId": "#002",
+      "tag": "buy",
       "createdAt": "2026-03-26T11:00:00Z",
       "updatedAt": "2026-03-26T11:00:20Z",
       "transcript": "Markete ekmek ve süt al.",
@@ -42,6 +46,8 @@
     },
     {
       "id": "20260325T150000Z-c3",
+      "displayId": "#003",
+      "tag": "work",
       "createdAt": "2026-03-25T15:00:00Z",
       "updatedAt": "2026-03-25T15:00:15Z",
       "transcript": "PlatformIO iskeletini bitir.",
@@ -58,6 +64,8 @@
     },
     {
       "id": "20260324T200000Z-d4",
+      "displayId": "#004",
+      "tag": "idea",
       "createdAt": "2026-03-24T20:00:00Z",
       "updatedAt": "2026-03-24T20:00:12Z",
       "transcript": "Kahve dükkanındaki ambiyans güzeldi.",
@@ -74,6 +82,8 @@
     },
     {
       "id": "20260320T100000Z-e5",
+      "displayId": "#005",
+      "tag": "private",
       "createdAt": "2026-03-20T10:00:00Z",
       "updatedAt": "2026-03-20T10:00:10Z",
       "transcript": "Eski tamamlanan görev.",

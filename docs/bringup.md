@@ -30,12 +30,12 @@ PlatformIO settings (see `platformio.ini`):
 
 1. BAT latch GPIO17 driven high while running (battery power).  
 2. E-paper power: **GPIO6 LOW** to enable panel — if blank, check `EPD_PWR`.  
-3. Idle UI shows note count, open tasks, next due, Wi-Fi / battery.  
-4. No Wi-Fi config → SoftAP SSID **`INote-Setup`**; open captive portal, save networks + API key.  
-5. Short BOOT → recording; short BOOT again → stop → `pending`.  
-6. During recording, hold BOOT ~1s → marker (`markers[]` in meta); e-paper shows `+mark`.  
-7. With `wifiOffWhenIdle`, STA connects when there is pending STT/organize work.  
-8. Copy full `web/` (including `format.js`) to `/inote/web/`. Enable `features.ask` / `briefing` in config to use portal Ask tab.  
+3. Boot lands on **Home** (note count, Wi-Fi / battery). See [`docs/gestures.md`](gestures.md).  
+4. No Wi-Fi config → SoftAP SSID **`INote-Setup`**; or use Menu → Sync later.  
+5. Home BOOT short → Record; BOOT short → Tag picker; PWR confirms tag → Home (`#NNN` + `tag` in meta).  
+6. During recording, hold BOOT ~1s → marker; Menu → Notes → PWR plays via speaker.  
+7. Menu → Sync → PWR toggles STA; portal starts when connected.  
+8. Copy full `web/` to `/inote/web/`. Enable `features.ask` / `briefing` for secondary Ask UI.  
 
 ## Sleep / power (validate on battery)
 
@@ -44,7 +44,7 @@ PlatformIO settings (see `platformio.ini`):
 | No buttons for `power.idleSleepSeconds` (default 45) | Draw **INote**, cut `EPD_PWR` (image stays), deep sleep |
 | Short **PWR** | Same sleep sequence |
 | Long **PWR** (~2s) | Sleep face → latch GPIO17 LOW (soft off). On USB, may fall through to deep sleep |
-| **BOOT** or **PWR** while sleeping | Wake to idle (does **not** auto-start recording) |
+| **BOOT** or **PWR** while sleeping | Wake to **Home** (does **not** auto-start recording) |
 
 Wake uses `esp_sleep_enable_ext1_wakeup` on GPIO0 + GPIO18, `ANY_LOW`.
 
@@ -56,18 +56,21 @@ Do not sleep while recording, SoftAP setup, or JobQueue busy.
 
 Copy the repo `web/` directory to the card as `/inote/web/` (`index.html`, `app.js`, `styles.css`). If missing, the device serves a minimal fallback page; `/api/notes` still works.
 
-Task done toggle: `POST /api/notes/:id/done` with JSON `{ "done": true }`.
+Task done: `POST /api/notes/:id/done` `{ "done": true }`. Delete: `DELETE /api/notes/:id`.
 
 ## Audio bring-up (ES8311)
 
-Pins: MCLK 14, SCLK 15, ASDOUT 16, LRCK 38, DSDIN 45; keep PA (42/46) **off** until TTS.
+Vendor reference: [Waveshare ESP32-S3-ePaper-1.54](https://github.com/waveshareteam/ESP32-S3-ePaper-1.54) `08_Audio_Test` / `board_cfg.h` (`S3_ePaper_1_54`).
 
-Firmware ships a **minimal ES8311 init + I2S RX**. If the codec does not ACK, `AudioCapture` still writes a silent WAV so storage/queue/STT can be tested — replace the register sequence with Waveshare’s full example once the board is on the desk.
+Pins: MCLK 14, BCLK 15, DIN 16, WS 38, DOUT 45; **Audio_PWR 42** on for codec; **PA 46** on for playback.
 
-1. Confirm I2C sees ES8311 at `0x18` (bus SDA 47 / SCL 48).  
-2. Record 5 s WAV; verify file size ≈ `16000 * 2 * seconds` + 44-byte header.  
-3. Play WAV on PC; then run `scripts/transcribe_mock.py` / `organize_mock.py` or device workers.  
-4. Tune ADC gain / I2S slot (left/right) if audio is quiet or empty.  
+Firmware: stronger ES8311 ADC+DAC init + I2S duplex; record path + WAV playback. If codec does not ACK, record still writes silent WAV for pipeline tests.
+
+1. Confirm I2C ES8311 at `0x18` (SDA 47 / SCL 48).  
+2. Record 5 s; file size ≈ `16000 * 2 * seconds` + 44.  
+3. Menu → Notes → PWR to play on speaker; or portal player / PC.  
+4. Tune ADC gain / I2S slot if quiet or empty.  
+5. SD: Waveshare demo is SDMMC 1-bit (39/41/40); firmware tries Arduino SPI + CS 21 — if mount fails, migrate to SDMMC.  
 
 ## Common failures
 
@@ -88,6 +91,6 @@ Set a monthly usage limit in the OpenAI dashboard (e.g. $5–10). Disable `featu
 
 ## PC test plan (no board)
 
-1. `cd web && python -m http.server 8080` — filter by Notes/Tasks/Appointments; fixture done checkbox updates locally.  
-2. `python scripts/organize_mock.py --text "Yarın sabah market alışverişi yap"` — expect `type: task` JSON.  
+1. `cd web && python -m http.server 8080` — library `#NNN` + tag chips; delete in fixture mode; secondary tasks/calendar.  
+2. `python scripts/organize_mock.py --text "Yarın sabah market alışverişi yap"` — expect `type: task` JSON (API organize ≠ manual `tag`).  
 3. `pio run` in `firmware/` — build succeeds.  

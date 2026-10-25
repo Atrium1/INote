@@ -4,95 +4,96 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>INote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="top">
-    <div>
-      <p class="brand">INote</p>
-      <p class="sub" id="deviceStatus">Yerel portal</p>
-    </div>
-    <label class="search-wrap">
-      <span class="sr-only">Ara</span>
-      <input type="search" id="search" placeholder="Notlarda ara…" autocomplete="off" />
-    </label>
-  </header>
+  <div class="paper">
+    <header class="mast">
+      <h1 class="brand">INote</h1>
+      <p class="sync-strip" id="deviceStatus">Senkron…</p>
+      <label class="search-wrap">
+        <span class="sr-only">Ara</span>
+        <input type="search" id="search" placeholder="Kütüphanede ara…" autocomplete="off" />
+      </label>
+    </header>
 
-  <nav class="tabs" aria-label="Görünüm">
-    <button type="button" class="tab active" data-tab="notes">Notlar</button>
-    <button type="button" class="tab" data-tab="tasks">Görevler</button>
-    <button type="button" class="tab" data-tab="calendar">Takvim</button>
-    <button type="button" class="tab" data-tab="ask">Sor / Briefing</button>
-  </nav>
-
-  <main>
-    <section id="panelNotes" class="panel">
-      <section class="filters" aria-label="Tür filtresi">
+    <section class="library" aria-label="Kütüphane">
+      <div class="filters" aria-label="Etiket ve durum">
         <button type="button" class="chip active" data-filter="all">Tümü</button>
-        <button type="button" class="chip" data-filter="note">Notlar</button>
-        <button type="button" class="chip" data-filter="task">Görevler</button>
-        <button type="button" class="chip" data-filter="appointment">Randevular</button>
+        <button type="button" class="chip" data-filter-tag="note">note</button>
+        <button type="button" class="chip" data-filter-tag="work">work</button>
+        <button type="button" class="chip" data-filter-tag="idea">idea</button>
+        <button type="button" class="chip" data-filter-tag="buy">buy</button>
+        <button type="button" class="chip" data-filter-tag="private">private</button>
         <button type="button" class="chip" data-filter="pending">Bekleyen</button>
         <button type="button" class="chip" data-filter="error">Hata</button>
-      </section>
+      </div>
       <ul id="noteList" class="note-list"></ul>
       <p id="empty" class="empty hidden">Eşleşen not yok.</p>
     </section>
 
-    <section id="panelTasks" class="panel hidden">
-      <section class="filters">
-        <button type="button" class="chip active" data-task-filter="open">Açık</button>
-        <button type="button" class="chip" data-task-filter="done">Tamam</button>
-        <button type="button" class="chip" data-task-filter="all">Tümü</button>
-      </section>
-      <ul id="taskList" class="note-list"></ul>
-    </section>
-
-    <section id="panelCalendar" class="panel hidden">
-      <div class="cal-nav">
-        <button type="button" id="calPrev">‹</button>
-        <h2 id="calTitle"></h2>
-        <button type="button" id="calNext">›</button>
+    <aside class="player" id="player" hidden>
+      <div class="player-head">
+        <p class="player-id" id="playerId">#000</p>
+        <p class="player-tag" id="playerTag"></p>
+        <button type="button" class="text-btn" id="playerClose" aria-label="Kapat">Kapat</button>
       </div>
-      <div id="calGrid" class="cal-grid"></div>
-      <ul id="calDayList" class="note-list"></ul>
-    </section>
-
-    <section id="panelAsk" class="panel hidden">
-      <div id="askBox" class="ask-box hidden">
-        <label>Soru<input id="askInput" type="text" placeholder="Örn. Bu hafta dişçi var mı?" /></label>
-        <button type="button" id="askBtn">Sor</button>
-        <pre id="askOut" class="ask-out"></pre>
-      </div>
-      <div id="briefBox" class="ask-box hidden">
-        <button type="button" id="briefDay">Günlük briefing</button>
-        <button type="button" id="briefWeek">Haftalık briefing</button>
-        <pre id="briefOut" class="ask-out"></pre>
-      </div>
-      <p id="askDisabled" class="empty">Ask/briefing kapalı (features.ask / features.briefing).</p>
-    </section>
-  </main>
-
-  <dialog id="detail">
-    <form method="dialog" class="detail-card">
-      <header>
-        <h2 id="detailTitle">Not</h2>
-        <button type="submit" class="icon-btn" aria-label="Kapat">×</button>
-      </header>
-      <p class="meta" id="detailMeta"></p>
+      <p class="player-meta" id="playerMeta"></p>
+      <p class="player-transcript" id="playerTranscript"></p>
+      <ul id="markerList" class="marker-list"></ul>
+      <p class="error-text" id="playerError"></p>
       <label id="doneRow" class="done-row hidden">
         <input type="checkbox" id="detailDone" />
-        Tamamlandı
+        Görev tamamlandı
       </label>
-      <p class="transcript" id="detailTranscript"></p>
-      <ul id="markerList" class="marker-list"></ul>
-      <p class="error-text" id="detailError"></p>
-      <div class="actions">
+      <div class="player-actions">
         <audio id="detailAudio" controls></audio>
-        <a id="detailDownload" href="#" download>WAV indir</a>
+        <button type="button" class="danger-btn" id="deleteBtn">Sil</button>
       </div>
-    </form>
-  </dialog>
+    </aside>
+
+    <details class="secondary">
+      <summary>Görevler · Takvim · Sor</summary>
+      <nav class="tabs" aria-label="İkincil">
+        <button type="button" class="tab active" data-tab="tasks">Görevler</button>
+        <button type="button" class="tab" data-tab="calendar">Takvim</button>
+        <button type="button" class="tab" data-tab="ask">Sor / Briefing</button>
+      </nav>
+      <section id="panelTasks" class="panel">
+        <div class="filters">
+          <button type="button" class="chip active" data-task-filter="open">Açık</button>
+          <button type="button" class="chip" data-task-filter="done">Tamam</button>
+          <button type="button" class="chip" data-task-filter="all">Tümü</button>
+        </div>
+        <ul id="taskList" class="note-list"></ul>
+      </section>
+      <section id="panelCalendar" class="panel hidden">
+        <div class="cal-nav">
+          <button type="button" id="calPrev">‹</button>
+          <h2 id="calTitle"></h2>
+          <button type="button" id="calNext">›</button>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+        <ul id="calDayList" class="note-list"></ul>
+      </section>
+      <section id="panelAsk" class="panel hidden">
+        <div id="askBox" class="ask-box hidden">
+          <label>Soru<input id="askInput" type="text" placeholder="Örn. Bu hafta dişçi var mı?" /></label>
+          <button type="button" id="askBtn">Sor</button>
+          <pre id="askOut" class="ask-out"></pre>
+        </div>
+        <div id="briefBox" class="ask-box hidden">
+          <button type="button" id="briefDay">Günlük briefing</button>
+          <button type="button" id="briefWeek">Haftalık briefing</button>
+          <pre id="briefOut" class="ask-out"></pre>
+        </div>
+        <p id="askDisabled" class="empty">Ask/briefing kapalı (features.ask / features.briefing).</p>
+      </section>
+    </details>
+  </div>
 
   <script src="format.js"></script>
   <script src="app.js"></script>
