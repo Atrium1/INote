@@ -19,11 +19,13 @@
   </header>
 
   <main>
-    <section class="filters" aria-label="Durum filtresi">
-      <button type="button" class="chip active" data-status="all">Tümü</button>
-      <button type="button" class="chip" data-status="ready">Hazır</button>
-      <button type="button" class="chip" data-status="pending">Bekleyen</button>
-      <button type="button" class="chip" data-status="error">Hata</button>
+    <section class="filters" aria-label="Tür filtresi">
+      <button type="button" class="chip active" data-filter="all">Tümü</button>
+      <button type="button" class="chip" data-filter="note">Notlar</button>
+      <button type="button" class="chip" data-filter="task">Görevler</button>
+      <button type="button" class="chip" data-filter="appointment">Randevular</button>
+      <button type="button" class="chip" data-filter="pending">Bekleyen</button>
+      <button type="button" class="chip" data-filter="error">Hata</button>
     </section>
     <ul id="noteList" class="note-list"></ul>
     <p id="empty" class="empty hidden">Eşleşen not yok.</p>
@@ -36,6 +38,10 @@
         <button type="submit" class="icon-btn" aria-label="Kapat">×</button>
       </header>
       <p class="meta" id="detailMeta"></p>
+      <label id="doneRow" class="done-row hidden">
+        <input type="checkbox" id="detailDone" />
+        Tamamlandı
+      </label>
       <p class="transcript" id="detailTranscript"></p>
       <p class="error-text" id="detailError"></p>
       <div class="actions">

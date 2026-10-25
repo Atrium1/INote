@@ -27,8 +27,23 @@ void applyJson(InoteConfig& cfg, JsonDocument& doc) {
   if (!doc["features"]["autoTranscribe"].isNull()) {
     cfg.autoTranscribe = doc["features"]["autoTranscribe"].as<bool>();
   }
+  if (doc["organize"]["model"].is<const char*>()) {
+    cfg.organizeModel = doc["organize"]["model"].as<String>();
+  }
   if (doc["ui"]["language"].is<const char*>()) {
     cfg.uiLanguage = doc["ui"]["language"].as<String>();
+  }
+  if (!doc["power"]["idleSleepSeconds"].isNull()) {
+    cfg.idleSleepSeconds = doc["power"]["idleSleepSeconds"].as<uint32_t>();
+  }
+  if (doc["power"]["sleepFace"].is<const char*>()) {
+    cfg.sleepFace = doc["power"]["sleepFace"].as<String>();
+  }
+  if (!doc["power"]["wifiOffWhenIdle"].isNull()) {
+    cfg.wifiOffWhenIdle = doc["power"]["wifiOffWhenIdle"].as<bool>();
+  }
+  if (!doc["power"]["shortPwrSleeps"].isNull()) {
+    cfg.shortPwrSleeps = doc["power"]["shortPwrSleeps"].as<bool>();
   }
   if (doc["wifi"].is<JsonArray>()) {
     cfg.wifi.clear();
@@ -56,7 +71,12 @@ InoteConfig load() {
   cfg.sttLanguage = prefs.getString("sttLang", cfg.sttLanguage);
   cfg.uiLanguage = prefs.getString("uiLang", cfg.uiLanguage);
   cfg.organize = prefs.getBool("organize", false);
+  cfg.organizeModel = prefs.getString("orgModel", cfg.organizeModel);
   cfg.autoTranscribe = prefs.getBool("autoStt", true);
+  cfg.idleSleepSeconds = prefs.getUInt("idleSleep", cfg.idleSleepSeconds);
+  cfg.sleepFace = prefs.getString("sleepFace", cfg.sleepFace);
+  cfg.wifiOffWhenIdle = prefs.getBool("wifiOffIdle", true);
+  cfg.shortPwrSleeps = prefs.getBool("shortPwrSlp", true);
 
   const int n = prefs.getInt("wifiN", 0);
   for (int i = 0; i < n && i < 5; ++i) {
@@ -76,7 +96,12 @@ bool save(const InoteConfig& cfg) {
   prefs.putString("sttLang", cfg.sttLanguage);
   prefs.putString("uiLang", cfg.uiLanguage);
   prefs.putBool("organize", cfg.organize);
+  prefs.putString("orgModel", cfg.organizeModel);
   prefs.putBool("autoStt", cfg.autoTranscribe);
+  prefs.putUInt("idleSleep", cfg.idleSleepSeconds);
+  prefs.putString("sleepFace", cfg.sleepFace);
+  prefs.putBool("wifiOffIdle", cfg.wifiOffWhenIdle);
+  prefs.putBool("shortPwrSlp", cfg.shortPwrSleeps);
 
   const int n = min((int)cfg.wifi.size(), 5);
   prefs.putInt("wifiN", n);

@@ -8,9 +8,18 @@
     "model": "gpt-transcribe",
     "language": "tr"
   },
+  "organize": {
+    "model": "gpt-4o-mini"
+  },
   "features": {
     "organize": false,
     "autoTranscribe": true
+  },
+  "power": {
+    "idleSleepSeconds": 45,
+    "sleepFace": "INote",
+    "wifiOffWhenIdle": true,
+    "shortPwrSleeps": true
   },
   "ui": {
     "language": "tr"

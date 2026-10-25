@@ -27,6 +27,25 @@ void syncTime() {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 }
 
+void ensureWifiIfNeeded(bool userActivity) {
+  if (WifiSetup::isSetupMode()) return;
+  if (!gCfg.hasWifi()) return;
+  if (WifiSetup::isConnected()) return;
+
+  const bool needWork = NoteStorage::hasPendingWork(gCfg.organize);
+  if (!needWork && gCfg.wifiOffWhenIdle && !userActivity) return;
+
+  if (WifiSetup::connectSta(gCfg)) {
+    Serial.printf("[wifi] %s\n", WifiSetup::staIp().c_str());
+    syncTime();
+    if (!portalStarted) {
+      PortalServer::setConfig(&gCfg);
+      PortalServer::begin();
+      portalStarted = true;
+    }
+  }
+}
+
 void refreshUi(bool force = false) {
   UiModel m;
   m.language = gCfg.uiLanguage;
@@ -34,6 +53,8 @@ void refreshUi(bool force = false) {
   m.batteryPercent = Power::batteryPercent();
   m.noteCount = 0;
   m.pendingCount = NoteStorage::countByStatus(NoteStatus::Pending);
+  m.openTasks = NoteStorage::countOpenTasks();
+  m.nextDueAt = NoteStorage::nextUpcomingDueAt();
   std::vector<IndexEntry> idx;
   if (NoteStorage::loadIndex(idx)) m.noteCount = (int)idx.size();
 
@@ -53,6 +74,7 @@ void refreshUi(bool force = false) {
 
 bool startNote() {
   if (!sdOk || recording) return false;
+  Power::noteActivity();
   activeNoteId = NoteStorage::newNoteId();
   const String dir = NoteStorage::noteDir(activeNoteId);
   if (!SD.exists("/inote/notes")) SD.mkdir("/inote/notes");
@@ -82,6 +104,7 @@ bool stopNote() {
   uint32_t dur = 0;
   AudioCapture::stopRecording(dur);
   recording = false;
+  Power::noteActivity();
 
   NoteMeta meta;
   if (!NoteStorage::readMeta(activeNoteId, meta)) return false;
@@ -96,8 +119,33 @@ bool stopNote() {
 
 void enterSetup() {
   if (recording) stopNote();
+  Power::noteActivity();
   WifiSetup::startSetupPortal(gCfg);
   refreshUi(true);
+}
+
+bool canSleep() {
+  if (recording) return false;
+  if (JobQueue::isBusy()) return false;
+  if (WifiSetup::isSetupMode()) return false;
+  return true;
+}
+
+void enterSleepSequence(bool latchOff) {
+  if (!canSleep()) return;
+  Serial.println(latchOff ? "[power] soft off" : "[power] deep sleep");
+  if (gCfg.wifiOffWhenIdle || latchOff) {
+    WifiSetup::radioOff();
+  }
+  AudioCapture::setPaEnabled(false);
+  DisplayUi::drawSleepFace(gCfg.sleepFace.c_str());
+  DisplayUi::panelPower(false);
+  delay(100);
+  if (latchOff) {
+    Power::softPowerOff();
+  } else {
+    Power::enterDeepSleep();
+  }
 }
 }  // namespace
 
@@ -121,17 +169,13 @@ void setup() {
   AudioCapture::begin();
   WifiSetup::begin();
   JobQueue::begin();
+  Power::noteActivity();
 
   if (!gCfg.hasWifi()) {
     enterSetup();
-  } else if (WifiSetup::connectSta(gCfg)) {
-    Serial.printf("[wifi] %s\n", WifiSetup::staIp().c_str());
-    syncTime();
-    PortalServer::setConfig(&gCfg);
-    PortalServer::begin();
-    portalStarted = true;
   } else {
-    Serial.println("[wifi] connect failed — long-press BOOT for setup");
+    // Connect when pending work, or always once at boot if wifiOffWhenIdle is false
+    ensureWifiIfNeeded(!gCfg.wifiOffWhenIdle || NoteStorage::hasPendingWork(gCfg.organize));
   }
 
   refreshUi(true);
@@ -152,29 +196,45 @@ void loop() {
       // ignore capture while in setup
     } else if (recording) {
       stopNote();
+      ensureWifiIfNeeded(true);
       refreshUi(true);
     } else {
       if (startNote()) refreshUi(true);
     }
   }
 
+  if (Power::pwrLongPress() && canSleep()) {
+    enterSleepSequence(true);
+  }
+
   if (Power::pwrShortClick() && !recording) {
-    // Light sleep placeholder — full power-off needs BAT latch dance on battery
-    Serial.println("[pwr] short press (sleep TODO)");
+    if (gCfg.shortPwrSleeps && canSleep()) {
+      enterSleepSequence(false);
+    } else {
+      Power::noteActivity();
+    }
   }
 
   if (recording) {
     AudioCapture::poll();
   }
 
-  if (!WifiSetup::isSetupMode() && WifiSetup::isConnected()) {
-    JobQueue::tick(gCfg, true);
-    if (!portalStarted) {
-      PortalServer::setConfig(&gCfg);
-      PortalServer::begin();
-      portalStarted = true;
-      syncTime();
+  // On-demand Wi-Fi for queue work
+  if (!WifiSetup::isSetupMode()) {
+    ensureWifiIfNeeded(false);
+    if (WifiSetup::isConnected()) {
+      JobQueue::tick(gCfg, true);
+      if (!portalStarted) {
+        PortalServer::setConfig(&gCfg);
+        PortalServer::begin();
+        portalStarted = true;
+        syncTime();
+      }
     }
+  }
+
+  if (canSleep() && Power::shouldIdleSleep(gCfg.idleSleepSeconds)) {
+    enterSleepSequence(false);
   }
 
   if (millis() - lastUiMs > 1000) {

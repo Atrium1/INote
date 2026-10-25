@@ -7,8 +7,8 @@
 #include <GxEPD2_BW.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include <Fonts/FreeMono9pt7b.h>
+#include <Fonts/FreeMonoBold18pt7b.h>
 
-// GxEPD2_154_D67 — 200x200 SSD1681 / GDEY0154D67 class
 static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
     GxEPD2_154_D67(PIN_EPD_CS, PIN_EPD_DC, PIN_EPD_RST, PIN_EPD_BUSY));
 
@@ -71,16 +71,26 @@ void paint() {
       display.printf("%d %s", current.noteCount, s.notes);
       display.setCursor(8, 90);
       display.print(current.wifiConnected ? s.wifiOk : s.wifiNo);
+      int y = 120;
       if (current.pendingCount > 0) {
-        display.setCursor(8, 120);
+        display.setCursor(8, y);
         display.printf("pending: %d", current.pendingCount);
+        y += 24;
+      }
+      if (current.openTasks > 0) {
+        display.setCursor(8, y);
+        display.printf("tasks: %d", current.openTasks);
+        y += 24;
+      }
+      if (current.nextDueAt.length()) {
+        display.setCursor(8, y);
+        display.print(current.nextDueAt.substring(0, 16));
       }
     }
 
     if (current.batteryPercent >= 0) {
       drawBattery(170, 8, current.batteryPercent);
     }
-    // Wi-Fi glyph
     display.drawCircle(160, 12, 3, GxEPD_BLACK);
     if (current.wifiConnected) {
       display.drawCircle(160, 12, 6, GxEPD_BLACK);
@@ -93,9 +103,13 @@ void paint() {
 
 namespace DisplayUi {
 
-bool begin() {
+void panelPower(bool on) {
   pinMode(PIN_EPD_PWR, OUTPUT);
-  digitalWrite(PIN_EPD_PWR, LOW);  // enable panel
+  digitalWrite(PIN_EPD_PWR, on ? LOW : HIGH);  // active LOW enable
+}
+
+bool begin() {
+  panelPower(true);
   delay(50);
   SPI.begin(PIN_EPD_SCK, -1, PIN_EPD_MOSI, PIN_EPD_CS);
   display.init(115200, true, 50, false);
@@ -111,15 +125,40 @@ void render(bool force) {
   if (!ready) return;
   const bool changed =
       force || current.screen != lastDrawn.screen || current.noteCount != lastDrawn.noteCount ||
-      current.pendingCount != lastDrawn.pendingCount || current.wifiConnected != lastDrawn.wifiConnected ||
+      current.pendingCount != lastDrawn.pendingCount || current.openTasks != lastDrawn.openTasks ||
+      current.nextDueAt != lastDrawn.nextDueAt || current.wifiConnected != lastDrawn.wifiConnected ||
       current.batteryPercent != lastDrawn.batteryPercent ||
       (current.screen == UiScreen::Recording && (current.recordingMs / 1000) != (lastDrawn.recordingMs / 1000)) ||
       current.errorMessage != lastDrawn.errorMessage;
 
   if (!changed) return;
-  // Avoid hammering full refresh; recording updates at most ~1 Hz via second change
   if (!force && millis() - lastFullMs < 800 && current.screen != UiScreen::Recording) return;
   paint();
+}
+
+void drawSleepFace(const char* text) {
+  panelPower(true);
+  delay(20);
+  if (!ready) {
+    SPI.begin(PIN_EPD_SCK, -1, PIN_EPD_MOSI, PIN_EPD_CS);
+    display.init(115200, true, 50, false);
+    ready = true;
+  }
+  display.setRotation(0);
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeMonoBold18pt7b);
+    const char* label = text && text[0] ? text : "INote";
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(label, 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((200 - (int)w) / 2, 110);
+    display.print(label);
+  } while (display.nextPage());
+  delay(50);
 }
 
 }  // namespace DisplayUi

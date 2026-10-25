@@ -101,6 +101,13 @@ bool connectSta(const InoteConfig& cfg) {
 
 bool isConnected() { return WiFi.status() == WL_CONNECTED; }
 
+void radioOff() {
+  if (setupMode) stopSetupPortal();
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+  delay(50);
+}
+
 void loop() {
   if (!setupMode) return;
   dns.processNextRequest();

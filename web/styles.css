@@ -219,6 +219,14 @@ dialog::backdrop {
   color: var(--accent);
 }
 
+.done-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  color: var(--ink);
+}
+
 audio {
   width: 100%;
 }

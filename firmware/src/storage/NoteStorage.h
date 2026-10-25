@@ -39,13 +39,21 @@ struct NoteMeta {
   NoteStatus status = NoteStatus::Pending;
   String error;
   uint32_t durationMs = 0;
-  String type;  // empty => null in JSON
+  String type;  // note|task|appointment; empty => null in JSON
+  String title;
+  String dueAt;
+  bool done = false;
+  String organizedAt;
+  String organizeError;
 };
 
 struct IndexEntry {
   String id;
   NoteStatus status;
   String createdAt;
+  String type;
+  bool done = false;
+  String dueAt;
 };
 
 namespace NoteStorage {
@@ -63,5 +71,9 @@ bool readMeta(const String& id, NoteMeta& out);
 bool updateIndex(const NoteMeta& meta);
 bool loadIndex(std::vector<IndexEntry>& out);
 bool listPending(std::vector<String>& ids);
+bool listNeedingOrganize(std::vector<String>& ids);
 int countByStatus(NoteStatus status);
+int countOpenTasks();
+String nextUpcomingDueAt();
+bool hasPendingWork(bool organizeEnabled);
 }  // namespace NoteStorage

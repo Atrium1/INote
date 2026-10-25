@@ -34,7 +34,6 @@ bool ensureLayout() {
 String utcNow() {
   time_t now = time(nullptr);
   if (now < 100000) {
-    // Clock not set — use millis-based placeholder stamp
     char buf[32];
     snprintf(buf, sizeof(buf), "1970-01-01T00:%02lu:%02luZ",
              (unsigned long)((millis() / 60000) % 60),
@@ -80,9 +79,19 @@ bool writeMeta(const NoteMeta& meta) {
   doc["audioPath"] = meta.audioPath.length() ? meta.audioPath : ("notes/" + meta.id + "/audio.wav");
   doc["transcript"] = meta.transcript;
   doc["status"] = noteStatusToString(meta.status);
-  doc["tags"] = JsonArray();
+  JsonArray tags = doc["tags"].to<JsonArray>();
+  (void)tags;
   if (meta.type.length()) doc["type"] = meta.type;
   else doc["type"] = nullptr;
+  if (meta.title.length()) doc["title"] = meta.title;
+  else doc["title"] = nullptr;
+  if (meta.dueAt.length()) doc["dueAt"] = meta.dueAt;
+  else doc["dueAt"] = nullptr;
+  doc["done"] = meta.done;
+  if (meta.organizedAt.length()) doc["organizedAt"] = meta.organizedAt;
+  else doc["organizedAt"] = nullptr;
+  if (meta.organizeError.length()) doc["organizeError"] = meta.organizeError;
+  else doc["organizeError"] = nullptr;
   if (meta.error.length()) doc["error"] = meta.error;
   else doc["error"] = nullptr;
   doc["durationMs"] = meta.durationMs;
@@ -118,6 +127,12 @@ bool readMeta(const String& id, NoteMeta& out) {
   out.error = doc["error"].isNull() ? "" : String(doc["error"].as<const char*>());
   out.durationMs = doc["durationMs"] | 0;
   out.type = doc["type"].isNull() ? "" : String(doc["type"].as<const char*>());
+  out.title = doc["title"].isNull() ? "" : String(doc["title"].as<const char*>());
+  out.dueAt = doc["dueAt"].isNull() ? "" : String(doc["dueAt"].as<const char*>());
+  out.done = doc["done"] | false;
+  out.organizedAt = doc["organizedAt"].isNull() ? "" : String(doc["organizedAt"].as<const char*>());
+  out.organizeError =
+      doc["organizeError"].isNull() ? "" : String(doc["organizeError"].as<const char*>());
   return true;
 }
 
@@ -134,6 +149,9 @@ bool loadIndex(std::vector<IndexEntry>& out) {
     e.id = o["id"] | "";
     e.status = noteStatusFromString(o["status"] | "error");
     e.createdAt = o["createdAt"] | "";
+    e.type = o["type"].isNull() ? "" : String(o["type"].as<const char*>());
+    e.done = o["done"] | false;
+    e.dueAt = o["dueAt"].isNull() ? "" : String(o["dueAt"].as<const char*>());
     if (e.id.length()) out.push_back(e);
   }
   return true;
@@ -147,12 +165,22 @@ bool updateIndex(const NoteMeta& meta) {
     if (e.id == meta.id) {
       e.status = meta.status;
       e.createdAt = meta.createdAt;
+      e.type = meta.type;
+      e.done = meta.done;
+      e.dueAt = meta.dueAt;
       found = true;
       break;
     }
   }
   if (!found) {
-    entries.insert(entries.begin(), {meta.id, meta.status, meta.createdAt});
+    IndexEntry e;
+    e.id = meta.id;
+    e.status = meta.status;
+    e.createdAt = meta.createdAt;
+    e.type = meta.type;
+    e.done = meta.done;
+    e.dueAt = meta.dueAt;
+    entries.insert(entries.begin(), e);
   }
 
   JsonDocument doc;
@@ -163,6 +191,11 @@ bool updateIndex(const NoteMeta& meta) {
     o["id"] = e.id;
     o["status"] = noteStatusToString(e.status);
     o["createdAt"] = e.createdAt;
+    if (e.type.length()) o["type"] = e.type;
+    else o["type"] = nullptr;
+    o["done"] = e.done;
+    if (e.dueAt.length()) o["dueAt"] = e.dueAt;
+    else o["dueAt"] = nullptr;
   }
   File f = SD.open(kIndex, FILE_WRITE);
   if (!f) return false;
@@ -183,6 +216,21 @@ bool listPending(std::vector<String>& ids) {
   return true;
 }
 
+bool listNeedingOrganize(std::vector<String>& ids) {
+  ids.clear();
+  std::vector<IndexEntry> entries;
+  if (!loadIndex(entries)) return false;
+  for (const auto& e : entries) {
+    if (e.status != NoteStatus::Ready) continue;
+    NoteMeta meta;
+    if (!readMeta(e.id, meta)) continue;
+    if (meta.organizedAt.length()) continue;
+    if (!meta.transcript.length()) continue;
+    ids.push_back(e.id);
+  }
+  return true;
+}
+
 int countByStatus(NoteStatus status) {
   std::vector<IndexEntry> entries;
   if (!loadIndex(entries)) return 0;
@@ -191,6 +239,37 @@ int countByStatus(NoteStatus status) {
     if (e.status == status) ++n;
   }
   return n;
+}
+
+int countOpenTasks() {
+  std::vector<IndexEntry> entries;
+  if (!loadIndex(entries)) return 0;
+  int n = 0;
+  for (const auto& e : entries) {
+    if (e.type == "task" && !e.done) ++n;
+  }
+  return n;
+}
+
+String nextUpcomingDueAt() {
+  std::vector<IndexEntry> entries;
+  if (!loadIndex(entries)) return "";
+  String best;
+  for (const auto& e : entries) {
+    if (!e.dueAt.length()) continue;
+    if (e.type == "task" && e.done) continue;
+    if (!best.length() || e.dueAt < best) best = e.dueAt;
+  }
+  return best;
+}
+
+bool hasPendingWork(bool organizeEnabled) {
+  if (countByStatus(NoteStatus::Pending) > 0) return true;
+  if (countByStatus(NoteStatus::Error) > 0) return true;
+  if (!organizeEnabled) return false;
+  std::vector<String> ids;
+  listNeedingOrganize(ids);
+  return !ids.empty();
 }
 
 }  // namespace NoteStorage

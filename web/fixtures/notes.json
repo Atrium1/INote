@@ -4,7 +4,8 @@
     "name": "INote",
     "wifi": true,
     "batteryPercent": 82,
-    "pendingCount": 1
+    "pendingCount": 1,
+    "openTasks": 1
   },
   "notes": [
     {
@@ -15,7 +16,12 @@
       "transcript": "Yarın sabah dişçi randevusunu hatırlat. Saat on buçukta.",
       "status": "ready",
       "tags": [],
-      "type": null,
+      "type": "appointment",
+      "title": "Dişçi randevusu",
+      "dueAt": "2026-03-26T07:30:00Z",
+      "done": false,
+      "organizedAt": "2026-03-25T10:15:50Z",
+      "organizeError": null,
       "error": null,
       "durationMs": 4200
     },
@@ -27,9 +33,31 @@
       "transcript": "Proje için PlatformIO iskeletini bitir, web portalını mock veriyle dene.",
       "status": "ready",
       "tags": [],
-      "type": null,
+      "type": "task",
+      "title": "PlatformIO iskeletini bitir",
+      "dueAt": null,
+      "done": false,
+      "organizedAt": "2026-03-25T09:00:25Z",
+      "organizeError": null,
       "error": null,
       "durationMs": 6800
+    },
+    {
+      "id": "20260324T200000Z-memo01",
+      "createdAt": "2026-03-24T20:00:00Z",
+      "updatedAt": "2026-03-24T20:00:12Z",
+      "audioPath": "notes/20260324T200000Z-memo01/audio.wav",
+      "transcript": "Kahve dükkanındaki ambiyans güzeldi, tekrar gitmek isteyebilirim.",
+      "status": "ready",
+      "tags": [],
+      "type": "note",
+      "title": "Kahve dükkanı notu",
+      "dueAt": null,
+      "done": false,
+      "organizedAt": "2026-03-24T20:00:20Z",
+      "organizeError": null,
+      "error": null,
+      "durationMs": 5000
     },
     {
       "id": "20260324T183000Z-g7h8i9",
@@ -40,6 +68,11 @@
       "status": "pending",
       "tags": [],
       "type": null,
+      "title": null,
+      "dueAt": null,
+      "done": false,
+      "organizedAt": null,
+      "organizeError": null,
       "error": null,
       "durationMs": 3100
     },
@@ -52,6 +85,11 @@
       "status": "error",
       "tags": [],
       "type": null,
+      "title": null,
+      "dueAt": null,
+      "done": false,
+      "organizedAt": null,
+      "organizeError": null,
       "error": "HTTP 401: invalid API key",
       "durationMs": 2500
     }
