@@ -30,6 +30,11 @@ inline NoteStatus noteStatusFromString(const String& s) {
   return NoteStatus::Error;
 }
 
+struct NoteMarker {
+  uint32_t tMs = 0;
+  String label;
+};
+
 struct NoteMeta {
   String id;
   String createdAt;
@@ -39,12 +44,13 @@ struct NoteMeta {
   NoteStatus status = NoteStatus::Pending;
   String error;
   uint32_t durationMs = 0;
-  String type;  // note|task|appointment; empty => null in JSON
+  String type;
   String title;
   String dueAt;
   bool done = false;
   String organizedAt;
   String organizeError;
+  std::vector<NoteMarker> markers;
 };
 
 struct IndexEntry {
@@ -72,8 +78,11 @@ bool updateIndex(const NoteMeta& meta);
 bool loadIndex(std::vector<IndexEntry>& out);
 bool listPending(std::vector<String>& ids);
 bool listNeedingOrganize(std::vector<String>& ids);
+bool listReadyNotes(std::vector<NoteMeta>& out, int limit);
 int countByStatus(NoteStatus status);
 int countOpenTasks();
 String nextUpcomingDueAt();
 bool hasPendingWork(bool organizeEnabled);
+bool saveAskLog(const String& id, const String& question, const String& answer);
+bool saveBriefingCache(const String& key, const String& text, const String& range);
 }  // namespace NoteStorage

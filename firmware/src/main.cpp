@@ -13,6 +13,7 @@
 #include "wifi_setup/WifiSetup.h"
 #include "web/PortalServer.h"
 #include "audio/AudioCapture.h"
+#include "i18n/Strings.h"
 
 namespace {
 InoteConfig gCfg;
@@ -22,19 +23,18 @@ bool recording = false;
 String activeNoteId;
 uint32_t lastUiMs = 0;
 bool portalStarted = false;
+bool markFlash = false;
+uint32_t markFlashUntil = 0;
+int activeMarkerCount = 0;
 
-void syncTime() {
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-}
+void syncTime() { configTime(0, 0, "pool.ntp.org", "time.nist.gov"); }
 
 void ensureWifiIfNeeded(bool userActivity) {
   if (WifiSetup::isSetupMode()) return;
   if (!gCfg.hasWifi()) return;
   if (WifiSetup::isConnected()) return;
-
   const bool needWork = NoteStorage::hasPendingWork(gCfg.organize);
   if (!needWork && gCfg.wifiOffWhenIdle && !userActivity) return;
-
   if (WifiSetup::connectSta(gCfg)) {
     Serial.printf("[wifi] %s\n", WifiSetup::staIp().c_str());
     syncTime();
@@ -55,19 +55,22 @@ void refreshUi(bool force = false) {
   m.pendingCount = NoteStorage::countByStatus(NoteStatus::Pending);
   m.openTasks = NoteStorage::countOpenTasks();
   m.nextDueAt = NoteStorage::nextUpcomingDueAt();
+  m.nextDueDisplay =
+      formatDateTimeDisplay(m.nextDueAt, gCfg.dateFormat, gCfg.timeFormat);
+  m.briefingHint = PortalServer::lastBriefingHint();
+  m.markerCount = activeMarkerCount;
+  m.markFlash = markFlash && millis() < markFlashUntil;
+  if (!m.markFlash) markFlash = false;
   std::vector<IndexEntry> idx;
   if (NoteStorage::loadIndex(idx)) m.noteCount = (int)idx.size();
 
-  if (WifiSetup::isSetupMode()) {
-    m.screen = UiScreen::Setup;
-  } else if (recording) {
+  if (WifiSetup::isSetupMode()) m.screen = UiScreen::Setup;
+  else if (recording) {
     m.screen = UiScreen::Recording;
     m.recordingMs = AudioCapture::recordingElapsedMs();
-  } else if (JobQueue::isBusy()) {
-    m.screen = UiScreen::Syncing;
-  } else {
-    m.screen = UiScreen::Idle;
-  }
+  } else if (JobQueue::isBusy() || PortalServer::isBusy()) m.screen = UiScreen::Syncing;
+  else m.screen = UiScreen::Idle;
+
   DisplayUi::setModel(m);
   DisplayUi::render(force);
 }
@@ -76,9 +79,9 @@ bool startNote() {
   if (!sdOk || recording) return false;
   Power::noteActivity();
   activeNoteId = NoteStorage::newNoteId();
-  const String dir = NoteStorage::noteDir(activeNoteId);
+  activeMarkerCount = 0;
   if (!SD.exists("/inote/notes")) SD.mkdir("/inote/notes");
-  if (!SD.mkdir(dir)) return false;
+  if (!SD.mkdir(NoteStorage::noteDir(activeNoteId))) return false;
 
   NoteMeta meta;
   meta.id = activeNoteId;
@@ -105,7 +108,6 @@ bool stopNote() {
   AudioCapture::stopRecording(dur);
   recording = false;
   Power::noteActivity();
-
   NoteMeta meta;
   if (!NoteStorage::readMeta(activeNoteId, meta)) return false;
   meta.durationMs = dur;
@@ -114,6 +116,23 @@ bool stopNote() {
   meta.error = "";
   NoteStorage::writeMeta(meta);
   activeNoteId = "";
+  activeMarkerCount = 0;
+  return true;
+}
+
+bool addMarker() {
+  if (!recording || !activeNoteId.length()) return false;
+  NoteMeta meta;
+  if (!NoteStorage::readMeta(activeNoteId, meta)) return false;
+  NoteMarker m;
+  m.tMs = AudioCapture::recordingElapsedMs();
+  meta.markers.push_back(m);
+  meta.updatedAt = NoteStorage::utcNow();
+  NoteStorage::writeMeta(meta);
+  activeMarkerCount = (int)meta.markers.size();
+  markFlash = true;
+  markFlashUntil = millis() + 1500;
+  Power::noteActivity();
   return true;
 }
 
@@ -126,26 +145,20 @@ void enterSetup() {
 
 bool canSleep() {
   if (recording) return false;
-  if (JobQueue::isBusy()) return false;
+  if (JobQueue::isBusy() || PortalServer::isBusy()) return false;
   if (WifiSetup::isSetupMode()) return false;
   return true;
 }
 
 void enterSleepSequence(bool latchOff) {
   if (!canSleep()) return;
-  Serial.println(latchOff ? "[power] soft off" : "[power] deep sleep");
-  if (gCfg.wifiOffWhenIdle || latchOff) {
-    WifiSetup::radioOff();
-  }
+  if (gCfg.wifiOffWhenIdle || latchOff) WifiSetup::radioOff();
   AudioCapture::setPaEnabled(false);
   DisplayUi::drawSleepFace(gCfg.sleepFace.c_str());
   DisplayUi::panelPower(false);
   delay(100);
-  if (latchOff) {
-    Power::softPowerOff();
-  } else {
-    Power::enterDeepSleep();
-  }
+  if (latchOff) Power::softPowerOff();
+  else Power::enterDeepSleep();
 }
 }  // namespace
 
@@ -156,13 +169,10 @@ void setup() {
 
   Power::begin();
   InoteConfigStore::begin();
-
   sdSpi.begin(PIN_SD_CLK, PIN_SD_MISO, PIN_SD_MOSI, PIN_SD_CS);
   sdOk = SD.begin(PIN_SD_CS, sdSpi);
   Serial.printf("[sd] %s\n", sdOk ? "ok" : "FAIL");
-  if (sdOk) {
-    NoteStorage::begin();
-  }
+  if (sdOk) NoteStorage::begin();
 
   gCfg = InoteConfigStore::load();
   DisplayUi::begin();
@@ -171,12 +181,8 @@ void setup() {
   JobQueue::begin();
   Power::noteActivity();
 
-  if (!gCfg.hasWifi()) {
-    enterSetup();
-  } else {
-    // Connect when pending work, or always once at boot if wifiOffWhenIdle is false
-    ensureWifiIfNeeded(!gCfg.wifiOffWhenIdle || NoteStorage::hasPendingWork(gCfg.organize));
-  }
+  if (!gCfg.hasWifi()) enterSetup();
+  else ensureWifiIfNeeded(!gCfg.wifiOffWhenIdle || NoteStorage::hasPendingWork(gCfg.organize));
 
   refreshUi(true);
 }
@@ -184,42 +190,36 @@ void setup() {
 void loop() {
   Power::updateButtons();
   WifiSetup::loop();
-
   if (portalStarted) PortalServer::loop();
 
   if (Power::bootLongPress()) {
-    enterSetup();
+    if (!recording) enterSetup();
+  }
+
+  if (Power::bootMarkPress() && recording) {
+    addMarker();
+    refreshUi(true);
   }
 
   if (Power::bootShortClick()) {
     if (WifiSetup::isSetupMode()) {
-      // ignore capture while in setup
     } else if (recording) {
       stopNote();
       ensureWifiIfNeeded(true);
       refreshUi(true);
-    } else {
-      if (startNote()) refreshUi(true);
+    } else if (startNote()) {
+      refreshUi(true);
     }
   }
 
-  if (Power::pwrLongPress() && canSleep()) {
-    enterSleepSequence(true);
-  }
-
+  if (Power::pwrLongPress() && canSleep()) enterSleepSequence(true);
   if (Power::pwrShortClick() && !recording) {
-    if (gCfg.shortPwrSleeps && canSleep()) {
-      enterSleepSequence(false);
-    } else {
-      Power::noteActivity();
-    }
+    if (gCfg.shortPwrSleeps && canSleep()) enterSleepSequence(false);
+    else Power::noteActivity();
   }
 
-  if (recording) {
-    AudioCapture::poll();
-  }
+  if (recording) AudioCapture::poll();
 
-  // On-demand Wi-Fi for queue work
   if (!WifiSetup::isSetupMode()) {
     ensureWifiIfNeeded(false);
     if (WifiSetup::isConnected()) {
@@ -233,9 +233,7 @@ void loop() {
     }
   }
 
-  if (canSleep() && Power::shouldIdleSleep(gCfg.idleSleepSeconds)) {
-    enterSleepSequence(false);
-  }
+  if (canSleep() && Power::shouldIdleSleep(gCfg.idleSleepSeconds)) enterSleepSequence(false);
 
   if (millis() - lastUiMs > 1000) {
     lastUiMs = millis();

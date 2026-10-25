@@ -6,4 +6,7 @@ namespace PortalServer {
 void begin();
 void loop();
 void setConfig(const InoteConfig* cfg);
+bool isBusy();  // ask/briefing in flight
+String lastBriefingHint();
+void clearBriefingHint();
 }  // namespace PortalServer

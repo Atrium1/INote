@@ -1,25 +1,25 @@
 # Roadmap
 
-## v0.1 — MVP base
+## v0.1 — Base
 
-Capture, SD storage, SoftAP Wi-Fi, OpenAI transcription, LAN portal, e-paper status.
+Capture, SD, SoftAP, STT, LAN portal, e-paper status.
 
-## v0.2 — Organization + battery sleep (current)
+## v0.2 — Organize + sleep
 
-- `features.organize` classify after STT  
-- Portal filters + task done  
-- Idle deep sleep with sticky e-ink “INote” face  
+Classification, task fields, idle deep sleep.
 
-## v0.3 — Recall + voice out
+## v0.3 — Calendar, markers, ask/briefing (current)
 
-- Hold-to-ask query over local transcripts  
-- Daily / weekly briefing as text, then TTS + speaker  
-- Usage caps / confirm-before-expensive calls  
+- Web calendar + task views  
+- Recording markers  
+- Date/time formats + de  
+- Text Q&A and day/week briefings  
+
+## v0.4 — Voice out
+
+- TTS + ES8311 speaker using ask/briefing `text` payloads  
+- Hold-to-ask spoken answers  
 
 ## Later
 
-- Recording markers  
-- Calendar month UI  
-- Date/time format preferences  
-- More UI languages  
-- Case STL / deep power profiling  
+Case STL, deeper power profiling, more locales.  

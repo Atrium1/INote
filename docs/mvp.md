@@ -1,26 +1,21 @@
 # MVP scope
 
-## v0.1 (shipped base)
+## v0.1
 
-- BOOT short press: start/stop recording  
-- 16 kHz mono 16-bit WAV on SD  
-- Queue `pending` → OpenAI STT → `ready`  
-- SoftAP `INote-Setup`, up to 5 Wi-Fi networks  
-- LAN portal: list, search, play/download  
-- TR/EN UI strings  
+Capture, STT queue, SoftAP, LAN list/search/playback, TR/EN strings.
 
-## v0.2 (this pass)
+## v0.2
 
-- Optional organize (`features.organize`): classify `note` / `task` / `appointment`  
-- Meta: `title`, `dueAt`, `done`, `organizedAt`, `organizeError`  
-- Portal: type filters, task done via `POST /api/notes/:id/done`  
-- E-paper idle: open task count + next `dueAt`  
-- Idle sleep: sticky “INote” face → EPD off → deep sleep (BOOT/PWR wake)  
-- Short PWR → sleep; long PWR → BAT latch soft-off  
+Organize (optional), portal type filters + task done, idle deep sleep with sticky INote face.
+
+## v0.3 (this pass)
+
+- Portal: Notes / Tasks / Calendar tabs; ask + briefing UI  
+- Recording markers: long-hold BOOT ~1s while recording  
+- `ui.dateFormat` / `ui.timeFormat` + `de` language  
+- Text `POST /api/ask` and `POST /api/briefing` (TTS later wraps `text`)  
 
 ## Still out of scope
 
-- TTS / spoken briefings / Q&A  
-- Recording markers  
-- Calendar month UI  
+- TTS / speaker playback  
 - Cloud sync / BLE  

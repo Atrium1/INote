@@ -10,9 +10,11 @@ bool pwrDown = false;
 uint32_t bootDownAt = 0;
 uint32_t pwrDownAt = 0;
 bool bootShort = false;
+bool bootMark = false;
 bool bootLong = false;
 bool pwrShort = false;
 bool pwrLong = false;
+bool bootMarkFired = false;
 bool bootLongFired = false;
 bool pwrLongFired = false;
 uint32_t lastActivityMs = 0;
@@ -54,6 +56,7 @@ bool pwrPressed() { return digitalRead(PIN_PWR_BTN) == LOW; }
 
 void updateButtons() {
   bootShort = false;
+  bootMark = false;
   bootLong = false;
   pwrShort = false;
   pwrLong = false;
@@ -62,14 +65,23 @@ void updateButtons() {
   if (b && !bootDown) {
     bootDown = true;
     bootDownAt = millis();
+    bootMarkFired = false;
     bootLongFired = false;
     noteActivity();
-  } else if (b && bootDown && !bootLongFired && millis() - bootDownAt > 3000) {
-    bootLong = true;
-    bootLongFired = true;
-    noteActivity();
+  } else if (b && bootDown) {
+    const uint32_t held = millis() - bootDownAt;
+    if (!bootMarkFired && held >= 1000) {
+      bootMark = true;
+      bootMarkFired = true;
+      noteActivity();
+    }
+    if (!bootLongFired && held >= 3000) {
+      bootLong = true;
+      bootLongFired = true;
+      noteActivity();
+    }
   } else if (!b && bootDown) {
-    if (!bootLongFired && millis() - bootDownAt < 3000 && millis() - bootDownAt > 40) {
+    if (!bootMarkFired && !bootLongFired && millis() - bootDownAt > 40) {
       bootShort = true;
       noteActivity();
     }
@@ -96,12 +108,12 @@ void updateButtons() {
 }
 
 bool bootShortClick() { return bootShort; }
+bool bootMarkPress() { return bootMark; }
 bool bootLongPress() { return bootLong; }
 bool pwrShortClick() { return pwrShort; }
 bool pwrLongPress() { return pwrLong; }
 
 void enterDeepSleep() {
-  // Wake on BOOT (0) or PWR (18) active LOW
   const uint64_t mask = (1ULL << PIN_BOOT_BTN) | (1ULL << PIN_PWR_BTN);
   esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_LOW);
   esp_deep_sleep_start();
@@ -110,7 +122,6 @@ void enterDeepSleep() {
 void softPowerOff() {
   holdBatteryLatch(false);
   delay(100);
-  // If still powered (USB), fall back to deep sleep
   enterDeepSleep();
 }
 

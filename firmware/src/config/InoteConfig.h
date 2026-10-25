@@ -17,7 +17,14 @@ struct InoteConfig {
   bool organize = false;
   String organizeModel = "gpt-4o-mini";
   bool autoTranscribe = true;
+  bool ask = false;
+  bool briefing = false;
+  String askModel = "gpt-4o-mini";
+  String briefingModel = "gpt-4o-mini";
+
   String uiLanguage = "tr";
+  String dateFormat = "DMY";  // DMY | YMD | MDY
+  String timeFormat = "H24";  // H24 | H12
 
   uint32_t idleSleepSeconds = 45;
   String sleepFace = "INote";

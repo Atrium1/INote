@@ -33,7 +33,9 @@ PlatformIO settings (see `platformio.ini`):
 3. Idle UI shows note count, open tasks, next due, Wi-Fi / battery.  
 4. No Wi-Fi config → SoftAP SSID **`INote-Setup`**; open captive portal, save networks + API key.  
 5. Short BOOT → recording; short BOOT again → stop → `pending`.  
-6. With `wifiOffWhenIdle`, STA connects when there is pending STT/organize work.  
+6. During recording, hold BOOT ~1s → marker (`markers[]` in meta); e-paper shows `+mark`.  
+7. With `wifiOffWhenIdle`, STA connects when there is pending STT/organize work.  
+8. Copy full `web/` (including `format.js`) to `/inote/web/`. Enable `features.ask` / `briefing` in config to use portal Ask tab.  
 
 ## Sleep / power (validate on battery)
 

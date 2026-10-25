@@ -45,6 +45,12 @@ void paint() {
       char buf[16];
       snprintf(buf, sizeof(buf), "%lu s", (unsigned long)(current.recordingMs / 1000));
       display.print(buf);
+      display.setCursor(8, 90);
+      display.printf("marks: %d", current.markerCount);
+      if (current.markFlash) {
+        display.setCursor(8, 120);
+        display.print(s.mark);
+      }
     } else if (current.screen == UiScreen::Syncing) {
       display.setCursor(8, 28);
       display.print(s.syncing);
@@ -75,26 +81,27 @@ void paint() {
       if (current.pendingCount > 0) {
         display.setCursor(8, y);
         display.printf("pending: %d", current.pendingCount);
-        y += 24;
+        y += 22;
       }
       if (current.openTasks > 0) {
         display.setCursor(8, y);
-        display.printf("tasks: %d", current.openTasks);
-        y += 24;
+        display.printf("%s: %d", s.tasks, current.openTasks);
+        y += 22;
       }
-      if (current.nextDueAt.length()) {
+      if (current.nextDueDisplay.length()) {
         display.setCursor(8, y);
-        display.print(current.nextDueAt.substring(0, 16));
+        display.print(current.nextDueDisplay.substring(0, 18));
+        y += 22;
+      }
+      if (current.briefingHint.length()) {
+        display.setCursor(8, y);
+        display.print(current.briefingHint.substring(0, 18));
       }
     }
 
-    if (current.batteryPercent >= 0) {
-      drawBattery(170, 8, current.batteryPercent);
-    }
+    if (current.batteryPercent >= 0) drawBattery(170, 8, current.batteryPercent);
     display.drawCircle(160, 12, 3, GxEPD_BLACK);
-    if (current.wifiConnected) {
-      display.drawCircle(160, 12, 6, GxEPD_BLACK);
-    }
+    if (current.wifiConnected) display.drawCircle(160, 12, 6, GxEPD_BLACK);
   } while (display.nextPage());
   lastDrawn = current;
   lastFullMs = millis();
@@ -105,7 +112,7 @@ namespace DisplayUi {
 
 void panelPower(bool on) {
   pinMode(PIN_EPD_PWR, OUTPUT);
-  digitalWrite(PIN_EPD_PWR, on ? LOW : HIGH);  // active LOW enable
+  digitalWrite(PIN_EPD_PWR, on ? LOW : HIGH);
 }
 
 bool begin() {
@@ -126,9 +133,13 @@ void render(bool force) {
   const bool changed =
       force || current.screen != lastDrawn.screen || current.noteCount != lastDrawn.noteCount ||
       current.pendingCount != lastDrawn.pendingCount || current.openTasks != lastDrawn.openTasks ||
-      current.nextDueAt != lastDrawn.nextDueAt || current.wifiConnected != lastDrawn.wifiConnected ||
+      current.markerCount != lastDrawn.markerCount || current.markFlash != lastDrawn.markFlash ||
+      current.nextDueDisplay != lastDrawn.nextDueDisplay ||
+      current.briefingHint != lastDrawn.briefingHint ||
+      current.wifiConnected != lastDrawn.wifiConnected ||
       current.batteryPercent != lastDrawn.batteryPercent ||
-      (current.screen == UiScreen::Recording && (current.recordingMs / 1000) != (lastDrawn.recordingMs / 1000)) ||
+      (current.screen == UiScreen::Recording &&
+       (current.recordingMs / 1000) != (lastDrawn.recordingMs / 1000)) ||
       current.errorMessage != lastDrawn.errorMessage;
 
   if (!changed) return;

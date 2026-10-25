@@ -27,11 +27,29 @@ void applyJson(InoteConfig& cfg, JsonDocument& doc) {
   if (!doc["features"]["autoTranscribe"].isNull()) {
     cfg.autoTranscribe = doc["features"]["autoTranscribe"].as<bool>();
   }
+  if (!doc["features"]["ask"].isNull()) {
+    cfg.ask = doc["features"]["ask"].as<bool>();
+  }
+  if (!doc["features"]["briefing"].isNull()) {
+    cfg.briefing = doc["features"]["briefing"].as<bool>();
+  }
   if (doc["organize"]["model"].is<const char*>()) {
     cfg.organizeModel = doc["organize"]["model"].as<String>();
   }
+  if (doc["ask"]["model"].is<const char*>()) {
+    cfg.askModel = doc["ask"]["model"].as<String>();
+  }
+  if (doc["briefing"]["model"].is<const char*>()) {
+    cfg.briefingModel = doc["briefing"]["model"].as<String>();
+  }
   if (doc["ui"]["language"].is<const char*>()) {
     cfg.uiLanguage = doc["ui"]["language"].as<String>();
+  }
+  if (doc["ui"]["dateFormat"].is<const char*>()) {
+    cfg.dateFormat = doc["ui"]["dateFormat"].as<String>();
+  }
+  if (doc["ui"]["timeFormat"].is<const char*>()) {
+    cfg.timeFormat = doc["ui"]["timeFormat"].as<String>();
   }
   if (!doc["power"]["idleSleepSeconds"].isNull()) {
     cfg.idleSleepSeconds = doc["power"]["idleSleepSeconds"].as<uint32_t>();
@@ -70,9 +88,15 @@ InoteConfig load() {
   cfg.sttModel = prefs.getString("sttModel", cfg.sttModel);
   cfg.sttLanguage = prefs.getString("sttLang", cfg.sttLanguage);
   cfg.uiLanguage = prefs.getString("uiLang", cfg.uiLanguage);
+  cfg.dateFormat = prefs.getString("dateFmt", cfg.dateFormat);
+  cfg.timeFormat = prefs.getString("timeFmt", cfg.timeFormat);
   cfg.organize = prefs.getBool("organize", false);
   cfg.organizeModel = prefs.getString("orgModel", cfg.organizeModel);
   cfg.autoTranscribe = prefs.getBool("autoStt", true);
+  cfg.ask = prefs.getBool("featAsk", false);
+  cfg.briefing = prefs.getBool("featBrief", false);
+  cfg.askModel = prefs.getString("askModel", cfg.askModel);
+  cfg.briefingModel = prefs.getString("briefModel", cfg.briefingModel);
   cfg.idleSleepSeconds = prefs.getUInt("idleSleep", cfg.idleSleepSeconds);
   cfg.sleepFace = prefs.getString("sleepFace", cfg.sleepFace);
   cfg.wifiOffWhenIdle = prefs.getBool("wifiOffIdle", true);
@@ -95,9 +119,15 @@ bool save(const InoteConfig& cfg) {
   prefs.putString("sttModel", cfg.sttModel);
   prefs.putString("sttLang", cfg.sttLanguage);
   prefs.putString("uiLang", cfg.uiLanguage);
+  prefs.putString("dateFmt", cfg.dateFormat);
+  prefs.putString("timeFmt", cfg.timeFormat);
   prefs.putBool("organize", cfg.organize);
   prefs.putString("orgModel", cfg.organizeModel);
   prefs.putBool("autoStt", cfg.autoTranscribe);
+  prefs.putBool("featAsk", cfg.ask);
+  prefs.putBool("featBrief", cfg.briefing);
+  prefs.putString("askModel", cfg.askModel);
+  prefs.putString("briefModel", cfg.briefingModel);
   prefs.putUInt("idleSleep", cfg.idleSleepSeconds);
   prefs.putString("sleepFace", cfg.sleepFace);
   prefs.putBool("wifiOffIdle", cfg.wifiOffWhenIdle);

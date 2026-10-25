@@ -15,7 +15,11 @@ struct UiModel {
   int noteCount = 0;
   int pendingCount = 0;
   int openTasks = 0;
+  int markerCount = 0;
+  bool markFlash = false;
   String nextDueAt;
+  String nextDueDisplay;
+  String briefingHint;
   bool wifiConnected = false;
   int batteryPercent = -1;
   uint32_t recordingMs = 0;
@@ -25,7 +29,7 @@ struct UiModel {
 
 namespace DisplayUi {
 bool begin();
-void panelPower(bool on);  // false => EPD_PWR HIGH (off), image retained
+void panelPower(bool on);
 void setModel(const UiModel& model);
 void render(bool force = false);
 void drawSleepFace(const char* text);

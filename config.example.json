@@ -11,9 +11,17 @@
   "organize": {
     "model": "gpt-4o-mini"
   },
+  "ask": {
+    "model": "gpt-4o-mini"
+  },
+  "briefing": {
+    "model": "gpt-4o-mini"
+  },
   "features": {
     "organize": false,
-    "autoTranscribe": true
+    "autoTranscribe": true,
+    "ask": false,
+    "briefing": false
   },
   "power": {
     "idleSleepSeconds": 45,
@@ -22,6 +30,8 @@
     "shortPwrSleeps": true
   },
   "ui": {
-    "language": "tr"
+    "language": "tr",
+    "dateFormat": "DMY",
+    "timeFormat": "H24"
   }
 }

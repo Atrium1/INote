@@ -10,14 +10,15 @@ bool pwrPressed();
 bool bootPressed();
 void updateButtons();
 bool bootShortClick();
-bool bootLongPress();  // ~3s held
+bool bootMarkPress();  // ~1s hold (recording marker)
+bool bootLongPress();  // ~3s held (setup)
 bool pwrShortClick();
-bool pwrLongPress();   // ~2s held while awake
+bool pwrLongPress();
 
 void noteActivity();
 uint32_t idleMs();
 bool shouldIdleSleep(uint32_t timeoutSec);
 
-void enterDeepSleep();  // wake on BOOT + PWR (active low)
-void softPowerOff();    // BAT latch low
+void enterDeepSleep();
+void softPowerOff();
 }  // namespace Power

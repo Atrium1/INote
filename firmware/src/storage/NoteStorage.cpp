@@ -11,17 +11,13 @@ const char* kIndex = "/inote/index.json";
 
 namespace NoteStorage {
 
-bool begin() {
-  return ensureLayout();
-}
+bool begin() { return ensureLayout(); }
 
 bool ensureLayout() {
-  if (!SD.exists(kRoot)) {
-    if (!SD.mkdir(kRoot)) return false;
-  }
-  if (!SD.exists("/inote/notes")) {
-    if (!SD.mkdir("/inote/notes")) return false;
-  }
+  if (!SD.exists(kRoot) && !SD.mkdir(kRoot)) return false;
+  if (!SD.exists("/inote/notes") && !SD.mkdir("/inote/notes")) return false;
+  if (!SD.exists("/inote/asks") && !SD.mkdir("/inote/asks")) return false;
+  if (!SD.exists("/inote/briefings") && !SD.mkdir("/inote/briefings")) return false;
   if (!SD.exists(kIndex)) {
     File f = SD.open(kIndex, FILE_WRITE);
     if (!f) return false;
@@ -69,9 +65,7 @@ String transcriptPath(const String& id) { return noteDir(id) + "/transcript.txt"
 
 bool writeMeta(const NoteMeta& meta) {
   const String dir = noteDir(meta.id);
-  if (!SD.exists(dir)) {
-    if (!SD.mkdir(dir)) return false;
-  }
+  if (!SD.exists(dir) && !SD.mkdir(dir)) return false;
   JsonDocument doc;
   doc["id"] = meta.id;
   doc["createdAt"] = meta.createdAt;
@@ -79,8 +73,7 @@ bool writeMeta(const NoteMeta& meta) {
   doc["audioPath"] = meta.audioPath.length() ? meta.audioPath : ("notes/" + meta.id + "/audio.wav");
   doc["transcript"] = meta.transcript;
   doc["status"] = noteStatusToString(meta.status);
-  JsonArray tags = doc["tags"].to<JsonArray>();
-  (void)tags;
+  doc["tags"] = JsonArray();
   if (meta.type.length()) doc["type"] = meta.type;
   else doc["type"] = nullptr;
   if (meta.title.length()) doc["title"] = meta.title;
@@ -95,6 +88,13 @@ bool writeMeta(const NoteMeta& meta) {
   if (meta.error.length()) doc["error"] = meta.error;
   else doc["error"] = nullptr;
   doc["durationMs"] = meta.durationMs;
+  JsonArray marks = doc["markers"].to<JsonArray>();
+  for (const auto& m : meta.markers) {
+    JsonObject o = marks.add<JsonObject>();
+    o["tMs"] = m.tMs;
+    if (m.label.length()) o["label"] = m.label;
+    else o["label"] = nullptr;
+  }
 
   File f = SD.open(metaPath(meta.id), FILE_WRITE);
   if (!f) return false;
@@ -118,6 +118,7 @@ bool readMeta(const String& id, NoteMeta& out) {
   DeserializationError err = deserializeJson(doc, f);
   f.close();
   if (err) return false;
+  out = {};
   out.id = doc["id"] | id;
   out.createdAt = doc["createdAt"] | "";
   out.updatedAt = doc["updatedAt"] | "";
@@ -133,6 +134,15 @@ bool readMeta(const String& id, NoteMeta& out) {
   out.organizedAt = doc["organizedAt"].isNull() ? "" : String(doc["organizedAt"].as<const char*>());
   out.organizeError =
       doc["organizeError"].isNull() ? "" : String(doc["organizeError"].as<const char*>());
+  out.markers.clear();
+  if (doc["markers"].is<JsonArray>()) {
+    for (JsonObject o : doc["markers"].as<JsonArray>()) {
+      NoteMarker m;
+      m.tMs = o["tMs"] | 0;
+      m.label = o["label"].isNull() ? "" : String(o["label"].as<const char*>());
+      out.markers.push_back(m);
+    }
+  }
   return true;
 }
 
@@ -209,9 +219,7 @@ bool listPending(std::vector<String>& ids) {
   std::vector<IndexEntry> entries;
   if (!loadIndex(entries)) return false;
   for (const auto& e : entries) {
-    if (e.status == NoteStatus::Pending || e.status == NoteStatus::Error) {
-      ids.push_back(e.id);
-    }
+    if (e.status == NoteStatus::Pending || e.status == NoteStatus::Error) ids.push_back(e.id);
   }
   return true;
 }
@@ -227,6 +235,20 @@ bool listNeedingOrganize(std::vector<String>& ids) {
     if (meta.organizedAt.length()) continue;
     if (!meta.transcript.length()) continue;
     ids.push_back(e.id);
+  }
+  return true;
+}
+
+bool listReadyNotes(std::vector<NoteMeta>& out, int limit) {
+  out.clear();
+  std::vector<IndexEntry> entries;
+  if (!loadIndex(entries)) return false;
+  for (const auto& e : entries) {
+    if ((int)out.size() >= limit) break;
+    if (e.status != NoteStatus::Ready) continue;
+    NoteMeta meta;
+    if (!readMeta(e.id, meta)) continue;
+    out.push_back(meta);
   }
   return true;
 }
@@ -270,6 +292,34 @@ bool hasPendingWork(bool organizeEnabled) {
   std::vector<String> ids;
   listNeedingOrganize(ids);
   return !ids.empty();
+}
+
+bool saveAskLog(const String& id, const String& question, const String& answer) {
+  ensureLayout();
+  JsonDocument doc;
+  doc["id"] = id;
+  doc["createdAt"] = utcNow();
+  doc["question"] = question;
+  doc["answer"] = answer;
+  doc["text"] = answer;  // TTS-ready alias
+  File f = SD.open(String("/inote/asks/") + id + ".json", FILE_WRITE);
+  if (!f) return false;
+  serializeJsonPretty(doc, f);
+  f.close();
+  return true;
+}
+
+bool saveBriefingCache(const String& key, const String& text, const String& range) {
+  ensureLayout();
+  JsonDocument doc;
+  doc["range"] = range;
+  doc["generatedAt"] = utcNow();
+  doc["text"] = text;
+  File f = SD.open(String("/inote/briefings/") + key + ".json", FILE_WRITE);
+  if (!f) return false;
+  serializeJsonPretty(doc, f);
+  f.close();
+  return true;
 }
 
 }  // namespace NoteStorage
