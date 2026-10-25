@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INote</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="brand">INote</p>
+      <p class="sub" id="deviceStatus">Yerel portal</p>
+    </div>
+    <label class="search-wrap">
+      <span class="sr-only">Ara</span>
+      <input type="search" id="search" placeholder="Notlarda ara…" autocomplete="off" />
+    </label>
+  </header>
+
+  <main>
+    <section class="filters" aria-label="Durum filtresi">
+      <button type="button" class="chip active" data-status="all">Tümü</button>
+      <button type="button" class="chip" data-status="ready">Hazır</button>
+      <button type="button" class="chip" data-status="pending">Bekleyen</button>
+      <button type="button" class="chip" data-status="error">Hata</button>
+    </section>
+    <ul id="noteList" class="note-list"></ul>
+    <p id="empty" class="empty hidden">Eşleşen not yok.</p>
+  </main>
+
+  <dialog id="detail">
+    <form method="dialog" class="detail-card">
+      <header>
+        <h2 id="detailTitle">Not</h2>
+        <button type="submit" class="icon-btn" aria-label="Kapat">×</button>
+      </header>
+      <p class="meta" id="detailMeta"></p>
+      <p class="transcript" id="detailTranscript"></p>
+      <p class="error-text" id="detailError"></p>
+      <div class="actions">
+        <audio id="detailAudio" controls></audio>
+        <a id="detailDownload" href="#" download>WAV indir</a>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

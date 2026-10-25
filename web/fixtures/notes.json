@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "device": {
+    "name": "INote",
+    "wifi": true,
+    "batteryPercent": 82,
+    "pendingCount": 1
+  },
+  "notes": [
+    {
+      "id": "20260325T101500Z-a1b2c3",
+      "createdAt": "2026-03-25T10:15:00Z",
+      "updatedAt": "2026-03-25T10:15:42Z",
+      "audioPath": "notes/20260325T101500Z-a1b2c3/audio.wav",
+      "transcript": "Yarın sabah dişçi randevusunu hatırlat. Saat on buçukta.",
+      "status": "ready",
+      "tags": [],
+      "type": null,
+      "error": null,
+      "durationMs": 4200
+    },
+    {
+      "id": "20260325T090000Z-d4e5f6",
+      "createdAt": "2026-03-25T09:00:00Z",
+      "updatedAt": "2026-03-25T09:00:18Z",
+      "audioPath": "notes/20260325T090000Z-d4e5f6/audio.wav",
+      "transcript": "Proje için PlatformIO iskeletini bitir, web portalını mock veriyle dene.",
+      "status": "ready",
+      "tags": [],
+      "type": null,
+      "error": null,
+      "durationMs": 6800
+    },
+    {
+      "id": "20260324T183000Z-g7h8i9",
+      "createdAt": "2026-03-24T18:30:00Z",
+      "updatedAt": "2026-03-24T18:30:05Z",
+      "audioPath": "notes/20260324T183000Z-g7h8i9/audio.wav",
+      "transcript": "",
+      "status": "pending",
+      "tags": [],
+      "type": null,
+      "error": null,
+      "durationMs": 3100
+    },
+    {
+      "id": "20260324T120000Z-j0k1l2",
+      "createdAt": "2026-03-24T12:00:00Z",
+      "updatedAt": "2026-03-24T12:01:10Z",
+      "audioPath": "notes/20260324T120000Z-j0k1l2/audio.wav",
+      "transcript": "",
+      "status": "error",
+      "tags": [],
+      "type": null,
+      "error": "HTTP 401: invalid API key",
+      "durationMs": 2500
+    }
+  ]
+}

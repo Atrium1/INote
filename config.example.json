@@ -1,0 +1,18 @@
+{
+  "wifi": [
+    { "ssid": "YourNetwork", "password": "YourPassword" }
+  ],
+  "openaiApiKey": "sk-...",
+  "stt": {
+    "provider": "openai",
+    "model": "gpt-transcribe",
+    "language": "tr"
+  },
+  "features": {
+    "organize": false,
+    "autoTranscribe": true
+  },
+  "ui": {
+    "language": "tr"
+  }
+}
