@@ -2,12 +2,13 @@
 
 #include "../../include/board_pins.h"
 #include "../i18n/Strings.h"
+#include "../storage/NoteStorage.h"
 
 #include <SPI.h>
+#include <time.h>
 #include <GxEPD2_BW.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
-#include <Fonts/FreeMono9pt7b.h>
-#include <Fonts/FreeMonoBold18pt7b.h>
+#include <Fonts/FreeSansBold9pt7b.h>
+#include <Fonts/FreeSansBold18pt7b.h>
 
 static GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
     GxEPD2_154_D67(PIN_EPD_CS, PIN_EPD_DC, PIN_EPD_RST, PIN_EPD_BUSY));
@@ -18,173 +19,269 @@ UiModel lastDrawn;
 bool ready = false;
 uint32_t lastFullMs = 0;
 
-const char* menuLabels[] = {"Notes", "Tags", "Sync", "Settings"};
-const char* settingsLabels[] = {"Sound", "Language", "Idle", "Organize"};
+constexpr int kMargin = 10;
+constexpr int kRuleY = 32;
+constexpr int kChipR = 5;
+constexpr int kChipH = 28;
+constexpr int kChipGap = 4;
+constexpr int kChipStartY = 40;
+constexpr int kTagChipH = 24;
+constexpr int kTagChipGap = 2;
+constexpr int kMaxChars = 16;
 
-void drawBattery(int x, int y, int pct) {
-  display.drawRect(x, y, 22, 10, GxEPD_BLACK);
-  display.fillRect(x + 22, y + 3, 2, 4, GxEPD_BLACK);
-  if (pct >= 0) {
-    int w = constrain(pct, 0, 100) * 18 / 100;
-    display.fillRect(x + 2, y + 2, w, 6, GxEPD_BLACK);
+void drawWifiArc(int cx, int cy, int r) {
+  display.drawCircle(cx, cy, r, GxEPD_BLACK);
+  display.fillRect(cx - r - 1, cy + 1, 2 * r + 3, r + 2, GxEPD_WHITE);
+}
+
+void drawWifiIcon(int x, int y, bool connected) {
+  const int cx = x + 9;
+  const int cy = y + 11;
+  display.fillCircle(cx, cy, 1, GxEPD_BLACK);
+  if (connected) {
+    drawWifiArc(cx, cy, 4);
+    drawWifiArc(cx, cy, 7);
+    drawWifiArc(cx, cy, 10);
+  } else {
+    drawWifiArc(cx, cy, 7);
+    display.drawLine(cx - 5, cy - 8, cx + 5, cy - 2, GxEPD_BLACK);
+  }
+}
+
+void drawBatteryIcon(int x, int y, int pct) {
+  display.drawRoundRect(x, y, 24, 12, 2, GxEPD_BLACK);
+  display.fillRoundRect(x + 24, y + 3, 3, 6, 1, GxEPD_BLACK);
+  if (pct < 0) return;
+  const int level = constrain(pct, 0, 100);
+  int fillW = level * 20 / 100;
+  if (fillW <= 0 && level > 0) fillW = 1;
+  if (fillW > 0) display.fillRoundRect(x + 2, y + 2, fillW, 8, 1, GxEPD_BLACK);
+  if (level > 0 && level < 15 && fillW < 4) {
+    display.drawLine(x + 4, y + 10, x + 18, y + 1, GxEPD_BLACK);
   }
 }
 
 void drawStatusChrome() {
-  if (current.batteryPercent >= 0) drawBattery(170, 8, current.batteryPercent);
-  display.drawCircle(160, 12, 3, GxEPD_BLACK);
-  if (current.wifiConnected) display.drawCircle(160, 12, 6, GxEPD_BLACK);
+  drawWifiIcon(136, 3, current.wifiConnected);
+  drawBatteryIcon(160, 4, current.batteryPercent);
 }
 
-void line(int y, const String& t) {
-  display.setCursor(8, y);
-  display.print(t.substring(0, 22));
+void headerBar(const char* titleLower) {
+  display.setTextColor(GxEPD_BLACK);
+  display.setFont(&FreeSansBold9pt7b);
+  display.setCursor(kMargin, 22);
+  display.print(titleLower);
+  display.drawFastHLine(kMargin, kRuleY, 200 - 2 * kMargin, GxEPD_BLACK);
+  drawStatusChrome();
+}
+
+void headerBrand() {
+  headerBar("INote");
+}
+
+void printTrunc(int x, int y, const String& t, int maxChars = kMaxChars) {
+  display.setCursor(x, y);
+  display.print(t.substring(0, maxChars));
+}
+
+void chipAt(int y, int h, const char* label, bool selected) {
+  const int w = 200 - 2 * kMargin;
+  if (selected) {
+    display.fillRoundRect(kMargin, y, w, h, kChipR, GxEPD_BLACK);
+    display.setTextColor(GxEPD_WHITE);
+  } else {
+    display.drawRoundRect(kMargin, y, w, h, kChipR, GxEPD_BLACK);
+    display.setTextColor(GxEPD_BLACK);
+  }
+  display.setFont(&FreeSansBold9pt7b);
+  display.setCursor(kMargin + 10, y + h - 7);
+  display.print(String(label).substring(0, kMaxChars));
+  display.setTextColor(GxEPD_BLACK);
+}
+
+void menuChip(int index, const char* label, bool selected) {
+  chipAt(kChipStartY + index * (kChipH + kChipGap), kChipH, label, selected);
+}
+
+void tagChip(int index, const char* label, bool selected) {
+  chipAt(kChipStartY + index * (kTagChipH + kTagChipGap), kTagChipH, label, selected);
+}
+
+void metricRow(int y, const char* label, const String& value) {
+  display.drawFastHLine(kMargin, y, 200 - 2 * kMargin, GxEPD_BLACK);
+  display.setFont(&FreeSansBold9pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  display.setCursor(kMargin, y + 16);
+  display.print(label);
+  int16_t x1, y1;
+  uint16_t tw, th;
+  display.getTextBounds(value.c_str(), 0, 0, &x1, &y1, &tw, &th);
+  display.setCursor(200 - kMargin - (int)tw, y + 16);
+  display.print(value);
+}
+
+void contentBox(int y, int h) {
+  display.drawRoundRect(kMargin, y, 200 - 2 * kMargin, h, kChipR, GxEPD_BLACK);
+}
+
+const DeviceUi& dui() { return deviceUi(current.language); }
+
+bool clockOk(struct tm& t) {
+  time_t now = time(nullptr);
+  if (now < 100000) return false;
+  gmtime_r(&now, &t);
+  return true;
+}
+
+String shortDateLine() {
+  struct tm t;
+  if (!clockOk(t)) return "";
+  const DeviceUi& d = dui();
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%02d %s", t.tm_mday, d.mon[constrain(t.tm_mon, 0, 11)]);
+  return String(buf);
+}
+
+const char* tagLabelUi(int index) {
+  const DeviceUi& d = dui();
+  if (index < 0 || index >= kTagCycleCount) return d.tag[0];
+  return d.tag[index];
+}
+
+void bodyLineIn(int x, int y, const String& t) {
+  display.setFont(&FreeSansBold9pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  printTrunc(x, y, t);
+}
+
+void footerHint(const char* t) {
+  display.setFont(&FreeSansBold9pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  printTrunc(kMargin, 192, String(t), 22);
+}
+
+int tagIndexOf(const String& tag) {
+  for (int i = 0; i < kTagCycleCount; ++i) {
+    if (tag == kTagCycle[i]) return i;
+  }
+  return 0;
 }
 
 void paint() {
-  const UiStrings s = stringsFor(current.language);
   display.setRotation(0);
   display.setFullWindow();
   display.firstPage();
   do {
     display.fillScreen(GxEPD_WHITE);
     display.setTextColor(GxEPD_BLACK);
-    display.setFont(&FreeMonoBold9pt7b);
+
+    const DeviceUi& d = dui();
 
     switch (current.screen) {
-      case UiScreen::Record: {
-        display.setCursor(8, 28);
-        display.print(s.recording);
-        display.setFont(&FreeMono9pt7b);
-        char buf[16];
-        snprintf(buf, sizeof(buf), "%lu s", (unsigned long)(current.recordingMs / 1000));
-        line(60, buf);
-        snprintf(buf, sizeof(buf), "marks: %d", current.markerCount);
-        line(90, buf);
-        if (current.markFlash) line(120, s.mark);
-        line(180, "BOOT stop");
-        break;
-      }
-      case UiScreen::Tag: {
-        display.setCursor(8, 28);
-        display.print("Tag");
-        display.setFont(&FreeMonoBold18pt7b);
-        display.setCursor(8, 90);
-        display.print(current.tagChoice);
-        display.setFont(&FreeMono9pt7b);
-        line(140, "BOOT cycle");
-        line(165, "PWR confirm");
+      case UiScreen::Home: {
+        headerBrand();
+        const String date = shortDateLine();
+        if (date.length()) {
+          display.setFont(&FreeSansBold9pt7b);
+          printTrunc(kMargin, 52, date);
+        }
+        display.setFont(&FreeSansBold18pt7b);
+        printTrunc(kMargin, date.length() ? 82 : 70, String(d.today), 12);
+
+        int y = 100;
+        metricRow(y, d.metricNotes, String(current.noteCount));
+        y += 28;
+        metricRow(y, d.metricPending, String(current.pendingCount));
+        y += 28;
+        metricRow(y, d.metricTasks, String(current.openTasks));
         break;
       }
       case UiScreen::Menu: {
-        display.setCursor(8, 28);
-        display.print("Menu");
-        display.setFont(&FreeMono9pt7b);
+        headerBar(d.headerMenu);
+        for (int i = 0; i < 4; ++i) menuChip(i, d.menu[i], i == current.menuIndex);
+        break;
+      }
+      case UiScreen::Settings: {
+        headerBar(d.headerSettings);
         for (int i = 0; i < 4; ++i) {
-          String row = (i == current.menuIndex ? "> " : "  ");
-          row += menuLabels[i];
-          line(56 + i * 22, row);
+          const char* lab = current.settingsLabels[i].length() ? current.settingsLabels[i].c_str()
+                                                              : "?";
+          menuChip(i, lab, i == current.settingsIndex);
         }
-        line(175, "PWR enter");
+        break;
+      }
+      case UiScreen::Record: {
+        headerBar(d.headerRecord);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%lu %s", (unsigned long)(current.recordingMs / 1000), d.idleUnit);
+        display.setFont(&FreeSansBold18pt7b);
+        printTrunc(kMargin, 78, String(buf), 10);
+        metricRow(100, d.metricMarks, String(current.markerCount));
+        if (current.markFlash) metricRow(128, d.metricMarks, String("+"));
+        footerHint(d.bootStop);
+        break;
+      }
+      case UiScreen::Tag: {
+        headerBar(d.headerTag);
+        const int sel = tagIndexOf(current.tagChoice);
+        for (int i = 0; i < kTagCycleCount; ++i) {
+          tagChip(i, tagLabelUi(i), i == sel);
+        }
         break;
       }
       case UiScreen::Notes:
       case UiScreen::Tags: {
-        display.setCursor(8, 28);
-        display.print(current.listTitle.length() ? current.listTitle : "Notes");
-        display.setFont(&FreeMono9pt7b);
-        line(56, current.listLine1);
-        line(80, current.listLine2);
+        String ht = current.listTitle.length() ? current.listTitle : d.notesTitle;
+        ht.toLowerCase();
+        headerBar(ht.c_str());
+        contentBox(40, 72);
+        bodyLineIn(kMargin + 8, 62, current.listLine1.length() ? current.listLine1 : d.empty);
+        if (current.listLine2.length()) bodyLineIn(kMargin + 8, 84, current.listLine2);
         if (current.confirmDelete) {
-          line(120, "Delete?");
-          line(145, "PWR yes");
-          line(165, "BOOT cancel");
+          contentBox(120, 56);
+          bodyLineIn(kMargin + 8, 142, d.deleteQ);
+          bodyLineIn(kMargin + 8, 164, d.deleteHint);
         } else {
-          line(120, current.playing ? "Playing…" : current.listHint);
-          if (current.screen == UiScreen::Notes) {
-            line(150, "PWR play");
-            line(170, "hold PWR del");
-          } else {
-            line(160, "PWR play");
-          }
+          metricRow(124, d.metricHint, current.playing ? String(d.playing) : current.listHint);
+          footerHint(current.screen == UiScreen::Notes ? d.holdPwrDel : d.pwrPlay);
         }
         break;
       }
       case UiScreen::Sync: {
-        display.setCursor(8, 28);
-        display.print("Sync");
-        display.setFont(&FreeMono9pt7b);
+        headerBar(d.headerSync);
         if (current.wifiConnected) {
-          line(60, "Wi-Fi ON");
-          line(85, current.wifiSsid.substring(0, 18));
-          line(110, current.portalIp);
-          line(145, "PWR disconnect");
+          metricRow(48, d.metricWifi, String(d.on));
+          metricRow(76, d.metricSsid, current.wifiSsid.length() ? current.wifiSsid : "-");
+          metricRow(104, d.metricIp, current.portalIp.length() ? current.portalIp : "-");
+          if (current.statusLine.length()) {
+            metricRow(132, d.metricStatus, current.statusLine.substring(0, 12));
+          }
+          footerHint(d.wifiDisconnect);
         } else {
-          line(60, "Wi-Fi OFF");
-          line(85, "PWR connect");
-          if (current.statusLine.length()) line(110, current.statusLine);
+          metricRow(48, d.metricWifi, String(d.off));
+          metricRow(76, d.metricAction, String(d.wifiConnect));
+          if (current.statusLine.length()) {
+            metricRow(104, d.metricStatus, current.statusLine.substring(0, 12));
+          }
           if (current.pendingCount > 0) {
-            char buf[24];
-            snprintf(buf, sizeof(buf), "pending %d", current.pendingCount);
-            line(135, buf);
+            metricRow(132, d.metricPending, String(current.pendingCount));
           }
         }
         break;
       }
-      case UiScreen::Settings: {
-        display.setCursor(8, 28);
-        display.print("Settings");
-        display.setFont(&FreeMono9pt7b);
-        for (int i = 0; i < 4; ++i) {
-          String row = (i == current.settingsIndex ? "> " : "  ");
-          row += settingsLabels[i];
-          line(50 + i * 20, row);
-        }
-        line(145, current.settingsValue.length() ? current.settingsValue : "PWR toggle");
-        line(170, "PWR apply");
-        break;
-      }
       case UiScreen::Setup: {
-        display.setCursor(8, 28);
-        display.print(s.setupAp);
-        display.setFont(&FreeMono9pt7b);
-        line(60, "INote-Setup");
+        headerBar(d.headerSetup);
+        contentBox(40, 80);
+        bodyLineIn(kMargin + 8, 68, d.setupLine1);
+        bodyLineIn(kMargin + 8, 92, d.setupLine2);
+        bodyLineIn(kMargin + 8, 112, d.setupLine3);
         break;
       }
-      case UiScreen::Home:
       default: {
-        display.setCursor(8, 28);
-        display.print(s.idle);
-        display.setFont(&FreeMono9pt7b);
-        char buf[24];
-        snprintf(buf, sizeof(buf), "%d %s", current.noteCount, s.notes);
-        line(60, buf);
-        line(85, current.wifiConnected ? s.wifiOk : s.wifiNo);
-        int y = 110;
-        if (current.statusLine.length()) {
-          line(y, current.statusLine);
-          y += 22;
-        }
-        if (current.pendingCount > 0) {
-          snprintf(buf, sizeof(buf), "pending: %d", current.pendingCount);
-          line(y, buf);
-          y += 22;
-        }
-        if (current.errorCount > 0) {
-          snprintf(buf, sizeof(buf), "errors: %d", current.errorCount);
-          line(y, buf);
-          y += 22;
-        }
-        if (current.openTasks > 0 && y < 175) {
-          snprintf(buf, sizeof(buf), "%s: %d", s.tasks, current.openTasks);
-          line(y, buf);
-        }
-        line(180, "BOOT rec");
+        headerBrand();
         break;
       }
     }
-
-    drawStatusChrome();
   } while (display.nextPage());
   lastDrawn = current;
   lastFullMs = millis();
@@ -213,17 +310,23 @@ void setModel(const UiModel& model) { current = model; }
 
 void render(bool force) {
   if (!ready) return;
+  const bool settingsChanged = current.settingsLabels[0] != lastDrawn.settingsLabels[0] ||
+                               current.settingsLabels[1] != lastDrawn.settingsLabels[1] ||
+                               current.settingsLabels[2] != lastDrawn.settingsLabels[2] ||
+                               current.settingsLabels[3] != lastDrawn.settingsLabels[3];
   const bool changed =
-      force || current.screen != lastDrawn.screen || current.noteCount != lastDrawn.noteCount ||
-      current.pendingCount != lastDrawn.pendingCount || current.openTasks != lastDrawn.openTasks ||
-      current.errorCount != lastDrawn.errorCount || current.markerCount != lastDrawn.markerCount ||
-      current.markFlash != lastDrawn.markFlash || current.nextDueDisplay != lastDrawn.nextDueDisplay ||
+      force || current.screen != lastDrawn.screen || current.language != lastDrawn.language ||
+      current.noteCount != lastDrawn.noteCount || current.pendingCount != lastDrawn.pendingCount ||
+      current.openTasks != lastDrawn.openTasks || current.errorCount != lastDrawn.errorCount ||
+      current.markerCount != lastDrawn.markerCount || current.markFlash != lastDrawn.markFlash ||
+      current.nextDueDisplay != lastDrawn.nextDueDisplay ||
       current.briefingHint != lastDrawn.briefingHint || current.statusLine != lastDrawn.statusLine ||
       current.wifiConnected != lastDrawn.wifiConnected || current.portalIp != lastDrawn.portalIp ||
-      current.tagChoice != lastDrawn.tagChoice || current.menuIndex != lastDrawn.menuIndex ||
-      current.settingsIndex != lastDrawn.settingsIndex ||
-      current.settingsValue != lastDrawn.settingsValue || current.listLine1 != lastDrawn.listLine1 ||
-      current.listLine2 != lastDrawn.listLine2 || current.listHint != lastDrawn.listHint ||
+      current.wifiSsid != lastDrawn.wifiSsid || current.tagChoice != lastDrawn.tagChoice ||
+      current.menuIndex != lastDrawn.menuIndex || current.settingsIndex != lastDrawn.settingsIndex ||
+      current.settingsValue != lastDrawn.settingsValue || settingsChanged ||
+      current.listLine1 != lastDrawn.listLine1 || current.listLine2 != lastDrawn.listLine2 ||
+      current.listHint != lastDrawn.listHint || current.listTitle != lastDrawn.listTitle ||
       current.confirmDelete != lastDrawn.confirmDelete || current.playing != lastDrawn.playing ||
       current.sdOk != lastDrawn.sdOk || current.batteryPercent != lastDrawn.batteryPercent ||
       (current.screen == UiScreen::Record &&
@@ -249,12 +352,12 @@ void drawSleepFace(const char* text) {
   do {
     display.fillScreen(GxEPD_WHITE);
     display.setTextColor(GxEPD_BLACK);
-    display.setFont(&FreeMonoBold18pt7b);
+    display.setFont(&FreeSansBold18pt7b);
     const char* label = text && text[0] ? text : "INote";
     int16_t x1, y1;
     uint16_t w, h;
     display.getTextBounds(label, 0, 0, &x1, &y1, &w, &h);
-    display.setCursor((200 - (int)w) / 2, 110);
+    display.setCursor((200 - (int)w) / 2, 112);
     display.print(label);
   } while (display.nextPage());
   delay(50);

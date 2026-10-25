@@ -1,0 +1,244 @@
+:root {
+  --ink: #1a1a1a;
+  --panel: #f7f4ec;
+  --paper: #ebe6da;
+  --bezel: #1f1e1c;
+  --bezel-rim: #3d3a36;
+  --muted: #5c574e;
+  --bg-top: #cfc9bb;
+  --bg-bot: #b8b0a0;
+  --boot: #2c4a3e;
+  --pwr: #5c3d2e;
+  --font: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  color: var(--ink);
+  background: linear-gradient(165deg, var(--bg-top), var(--bg-bot));
+  position: relative;
+}
+
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+}
+
+header .eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+header h1 {
+  margin: 0.2rem 0 0;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  margin: 0.4rem 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.sub code {
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.35);
+  padding: 0.1rem 0.35rem;
+}
+
+.stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  align-items: flex-start;
+}
+
+.device {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bezel {
+  padding: 18px 16px 20px;
+  background: linear-gradient(145deg, #2c2a27, var(--bezel));
+  border-radius: 18px;
+  border: 1px solid var(--bezel-rim);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bezel-inner {
+  padding: 3px;
+  background: #0d0c0b;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#panel {
+  display: block;
+  width: 400px;
+  height: 400px;
+  image-rendering: pixelated;
+  background: var(--panel);
+  vertical-align: top;
+}
+
+.caption {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 12.5rem;
+  flex: 1 1 11rem;
+  max-width: 16rem;
+}
+
+.btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0 0;
+  border-top: 2px solid transparent;
+}
+
+.btn-group.boot {
+  border-top-color: var(--boot);
+}
+
+.btn-group.pwr {
+  border-top-color: var(--pwr);
+}
+
+.btn-group.wake {
+  border-top-color: var(--ink);
+}
+
+.controls h2 {
+  margin: 0 0 0.15rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.controls h2 span {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.controls button {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #9a9488;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 2px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn-group.boot button:hover {
+  border-color: var(--boot);
+  background: #e4ebe6;
+}
+
+.btn-group.pwr button:hover {
+  border-color: var(--pwr);
+  background: #ebe4de;
+}
+
+.controls button:active {
+  background: #ddd6c8;
+}
+
+.wake-btn {
+  font-weight: 600 !important;
+}
+
+.demo {
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(26, 26, 26, 0.15);
+}
+
+.demo h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.demo label {
+  display: block;
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  #panel {
+    width: 300px;
+    height: 300px;
+  }
+}

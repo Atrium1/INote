@@ -14,6 +14,8 @@ Hardware pin reference: [waveshareteam/ESP32-S3-ePaper-1.54](https://github.com/
 cd web && python -m http.server 8080
 ```
 
+E-ink flow sim (device screens + BOOT/PWR): `cd tools/epaper-sim && python -m http.server 8090` → http://127.0.0.1:8090/ — see [`tools/epaper-sim/README.md`](tools/epaper-sim/README.md).
+
 ```bash
 python scripts/check_fixtures.py
 python scripts/prepare_sd.py --out ./sd_image

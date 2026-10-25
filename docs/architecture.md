@@ -27,7 +27,7 @@ Portal: library (#NNN, tag, play, delete) + secondary tasks/calendar/ask
 | Module | Responsibility |
 |--------|----------------|
 | `ui/AppUi` | Home/Record/Tag/Menu/* state machine |
-| `display` | E-paper screens |
+| `display` | E-paper screens (FreeSans* bitmap fonts, 200×200 grid) |
 | `config` | NVS + SD; ui language/date/time; feature flags |
 | `storage` | notes, `displayId`, `tag`, markers, ask/briefing |
 | `audio` | ES8311 record + WAV playback (Waveshare pin map) |

@@ -69,7 +69,7 @@ bool tryConnectWifi(bool force) {
   if (!cfg) return false;
   if (!cfg->hasWifi()) {
     if (force) {
-      syncHint = "No SSID";
+      syncHint = deviceUi(cfg->uiLanguage).noSsid;
       syncHintUntil = millis() + 4000;
     }
     return false;
@@ -87,7 +87,7 @@ bool tryConnectWifi(bool force) {
     return true;
   }
   if (force) {
-    syncHint = "Wi-Fi fail";
+    syncHint = deviceUi(cfg->uiLanguage).wifiFail;
     syncHintUntil = millis() + 4000;
   }
   return false;
@@ -111,20 +111,51 @@ void reloadTagNotes() {
   if (tagsNoteIndex < 0) tagsNoteIndex = 0;
 }
 
+const DeviceUi& dui() { return deviceUi(cfg ? cfg->uiLanguage : String("tr")); }
+
+int tagIndexOfId(const String& tag) {
+  for (int i = 0; i < kTagCycleCount; ++i) {
+    if (tag == kTagCycle[i]) return i;
+  }
+  return 0;
+}
+
 String settingsValueText() {
   if (!cfg) return "";
+  const DeviceUi& d = dui();
   switch (settingsIndex) {
     case 0:
-      return cfg->soundEnabled ? "Sound ON" : "Sound OFF";
+      return cfg->soundEnabled ? d.soundOn : d.soundOff;
     case 1:
-      return String("Lang ") + cfg->uiLanguage;
+      return String(d.langPref) + cfg->uiLanguage;
     case 2:
-      if (cfg->idleSleepSeconds == 0) return "Idle OFF";
-      return String("Idle ") + String(cfg->idleSleepSeconds) + "s";
+      if (cfg->idleSleepSeconds == 0) return d.idleOff;
+      return String(d.idlePref) + String(cfg->idleSleepSeconds) + d.idleUnit;
     case 3:
-      return cfg->organize ? "Org ON" : "Org OFF";
+      return cfg->organize ? d.orgOn : d.orgOff;
     default:
       return "";
+  }
+}
+
+String tagLabelUi(const String& tag) {
+  return dui().tag[tagIndexOfId(tag)];
+}
+
+String statusLabelUi(NoteStatus s) {
+  const DeviceUi& d = dui();
+  switch (s) {
+    case NoteStatus::Recording:
+      return d.stRecording;
+    case NoteStatus::Pending:
+      return d.stPending;
+    case NoteStatus::Transcribing:
+      return d.stTranscribing;
+    case NoteStatus::Ready:
+      return d.stReady;
+    case NoteStatus::Error:
+    default:
+      return d.stError;
   }
 }
 
@@ -251,9 +282,9 @@ void enterSleepSequence(bool latchOff) {
 }
 
 String homeStatusLine() {
-  if (!sdReady) return "SD fail";
-  if (!cfg->hasApiKey() && NoteStorage::countByStatus(NoteStatus::Pending) > 0) return "No API key";
-  if (!cfg->hasApiKey()) return "No API key";
+  const DeviceUi& d = dui();
+  if (!sdReady) return d.sdFail;
+  if (!cfg->hasApiKey()) return d.noApiKey;
   return "";
 }
 
@@ -277,6 +308,14 @@ void refreshUi(bool force = false) {
   m.menuIndex = menuIndex;
   m.settingsIndex = settingsIndex;
   m.settingsValue = settingsValueText();
+  if (cfg) {
+    const DeviceUi& d = dui();
+    m.settingsLabels[0] = cfg->soundEnabled ? d.soundOn : d.soundOff;
+    m.settingsLabels[1] = String(d.langPref) + cfg->uiLanguage;
+    if (cfg->idleSleepSeconds == 0) m.settingsLabels[2] = d.idleOff;
+    else m.settingsLabels[2] = String(d.idlePref) + String(cfg->idleSleepSeconds) + d.idleUnit;
+    m.settingsLabels[3] = cfg->organize ? d.orgOn : d.orgOff;
+  }
   m.tagChoice = pendingTag;
   m.confirmDelete = confirmDelete;
   m.playing = AudioCapture::isPlaying();
@@ -303,47 +342,53 @@ void refreshUi(bool force = false) {
         break;
       case State::Notes: {
         m.screen = UiScreen::Notes;
-        m.listTitle = "Notes";
-        if (noteList.empty()) {
-          m.listLine1 = "(empty)";
-          m.listLine2 = "";
-          m.listHint = "hold BOOT menu";
-        } else {
-          const auto& e = noteList[notesIndex];
-          m.listLine1 = e.displayId.length() ? e.displayId : e.id.substring(0, 12);
-          m.listLine2 = e.tag + " · " + noteStatusToString(e.status);
-          if (e.status == NoteStatus::Error) {
-            NoteMeta meta;
-            if (NoteStorage::readMeta(e.id, meta) && meta.error.length()) {
-              m.listLine2 = meta.error.substring(0, 20);
+        {
+          const DeviceUi& d = dui();
+          m.listTitle = d.notesTitle;
+          if (noteList.empty()) {
+            m.listLine1 = d.empty;
+            m.listLine2 = "";
+            m.listHint = d.holdBootMenu;
+          } else {
+            const auto& e = noteList[notesIndex];
+            m.listLine1 = e.displayId.length() ? e.displayId : e.id.substring(0, 12);
+            m.listLine2 = tagLabelUi(e.tag) + " · " + statusLabelUi(e.status);
+            if (e.status == NoteStatus::Error) {
+              NoteMeta meta;
+              if (NoteStorage::readMeta(e.id, meta) && meta.error.length()) {
+                m.listLine2 = meta.error.substring(0, 20);
+              }
             }
+            m.listHint = d.holdBootMenu;
           }
-          m.listHint = "hold BOOT menu";
         }
         break;
       }
       case State::Tags: {
         m.screen = UiScreen::Tags;
-        if (tagsFilterIndex == 0) m.listTitle = "Tags: all";
-        else m.listTitle = String("Tags: ") + kTagCycle[tagsFilterIndex - 1];
-        if (tagNotes.empty()) {
-          m.listLine1 = "(empty)";
-          m.listLine2 = "";
-          m.listHint = "BOOT next";
-        } else {
-          const auto& n = tagNotes[tagsNoteIndex];
-          m.listLine1 = n.displayId.length() ? n.displayId : n.id.substring(0, 12);
-          m.listLine2 = n.tag;
-          if (n.status == NoteStatus::Error && n.error.length()) {
-            m.listLine2 = n.error.substring(0, 20);
+        {
+          const DeviceUi& d = dui();
+          if (tagsFilterIndex == 0) m.listTitle = d.tagsAll;
+          else m.listTitle = String(d.tagsPref) + tagLabelUi(kTagCycle[tagsFilterIndex - 1]);
+          if (tagNotes.empty()) {
+            m.listLine1 = d.empty;
+            m.listLine2 = "";
+            m.listHint = d.bootNext;
+          } else {
+            const auto& n = tagNotes[tagsNoteIndex];
+            m.listLine1 = n.displayId.length() ? n.displayId : n.id.substring(0, 12);
+            m.listLine2 = tagLabelUi(n.tag);
+            if (n.status == NoteStatus::Error && n.error.length()) {
+              m.listLine2 = n.error.substring(0, 20);
+            }
+            m.listHint = d.pwrPlay;
           }
-          m.listHint = "PWR play";
         }
         break;
       }
       case State::Sync:
         m.screen = UiScreen::Sync;
-        m.statusLine = syncHint;
+        m.statusLine = syncHint.length() ? syncHint : homeStatusLine();
         break;
       case State::Settings:
         m.screen = UiScreen::Settings;
@@ -351,7 +396,6 @@ void refreshUi(bool force = false) {
       case State::Home:
       default:
         m.screen = UiScreen::Home;
-        m.statusLine = homeStatusLine();
         break;
     }
   }

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INote e-paper flow sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <main class="wrap">
+    <header>
+      <p class="eyebrow">INote · device mock</p>
+      <h1>e-paper flow</h1>
+      <p class="sub">200×200 B/W — mirrors <code>docs/gestures.md</code></p>
+    </header>
+
+    <div class="stage">
+      <div class="device">
+        <div class="bezel">
+          <div class="bezel-inner">
+            <canvas id="panel" width="200" height="200" aria-label="E-paper panel"></canvas>
+          </div>
+        </div>
+        <p class="caption">1.54″ e-paper · ESP32-S3</p>
+      </div>
+
+      <div class="controls">
+        <section class="btn-group boot">
+          <h2>BOOT <span>GPIO0</span></h2>
+          <button type="button" data-act="boot-short">Short</button>
+          <button type="button" data-act="boot-hold1">Hold ~1s</button>
+          <button type="button" data-act="boot-hold3">Hold ~3s · SoftAP</button>
+        </section>
+        <section class="btn-group pwr">
+          <h2>PWR <span>GPIO18</span></h2>
+          <button type="button" data-act="pwr-short">Short</button>
+          <button type="button" data-act="pwr-long">Hold ~2s</button>
+        </section>
+        <section id="wakeRow" class="btn-group wake hidden">
+          <h2>Sleep</h2>
+          <button type="button" class="wake-btn" data-act="wake">Wake → Home</button>
+        </section>
+      </div>
+    </div>
+
+    <aside class="demo">
+      <h2>Demo flags</h2>
+      <label><input type="checkbox" id="sdOk" checked /> SD OK</label>
+      <label><input type="checkbox" id="hasApiKey" /> Has API key</label>
+      <p class="hint" id="stateLabel"></p>
+    </aside>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -26,7 +26,7 @@ struct UiModel {
   String nextDueAt;
   String nextDueDisplay;
   String briefingHint;
-  String statusLine;  // Home / Sync short status
+  String statusLine;  // Sync short status / health
   bool wifiConnected = false;
   String wifiSsid;
   String portalIp;
@@ -37,7 +37,8 @@ struct UiModel {
   String tagChoice = "note";
   int menuIndex = 0;      // 0 Notes 1 Tags 2 Sync 3 Settings
   int settingsIndex = 0;  // 0 Sound 1 Language 2 Idle 3 Organize
-  String settingsValue;   // live value for current settings row
+  String settingsValue;   // legacy; chips use settingsLabels
+  String settingsLabels[4];
   String listTitle;
   String listLine1;
   String listLine2;
